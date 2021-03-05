@@ -6,4 +6,4 @@ seo:
   image: https://i.imgur.com/pg4lzhK.jpg
 
 ---
-I do standup comedies.
+![](https://i.imgur.com/pg4lzhK.jpg)I do standup comedies.
