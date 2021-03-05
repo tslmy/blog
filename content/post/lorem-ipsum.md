@@ -5,7 +5,7 @@ title: Lorem Ipsum
 excerpt: Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur,
   adipisci velit.
 date: 2021-03-05T01:00:00-07:00
-hero: ''
+hero: https://i.imgur.com/6uEgy47.jpg
 
 ---
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed bibendum quis sem at commodo. Cras tempor elit quis sem maximus dignissim. Aliquam placerat urna et rutrum ultrices. Quisque sem ante, commodo vitae risus in, condimentum rhoncus est. Proin et consectetur erat. Nullam elementum nec augue quis eleifend. Fusce non nibh in augue efficitur vehicula. Aenean bibendum gravida ipsum, a egestas odio ultrices fringilla. Sed cursus, augue at hendrerit fermentum, velit metus tincidunt purus, id suscipit sapien odio id nibh. Sed lobortis turpis velit, at mollis dolor sodales sit amet. Suspendisse efficitur bibendum magna, et ullamcorper leo blandit nec. Aenean dictum accumsan dui, ut tincidunt ligula commodo nec.
