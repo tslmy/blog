@@ -13,6 +13,7 @@ pnpm build
 - **Wikilinks**: `[[Post title]]` / `[[Post title|label]]` → `/posts/<slug>/` via `src/plugins/remark-wikilinks.mjs`. Slugs are the lowercased title, so name files accordingly. Embeds (`![[...]]`) are not handled yet.
 - **Charts**: `<Chart data={[...]} />` (Observable Plot) in `.mdx` posts; see `src/components/Chart.astro`.
 - **RSS**: `/rss.xml`.
+- **Hosting**: Cloudflare Pages (project `blog`, builds `pnpm build` → `dist`, `NODE_VERSION=22`) deploys every push to `main` and serves https://myli.page. GitHub Actions (`.github/workflows/ci.yml`) only checks that the build passes.
 - Site URL is set to `https://myli.page` in `astro.config.mjs`.
 
 ## Publishing from Obsidian
