@@ -23,3 +23,24 @@ time { color: var(--muted); font-size: .9rem; }
   .sidenote-toggle:checked + .sidenote { display: block; }
 }
 .chart { margin: 1.5rem 0; overflow-x: auto; }
+
+/* Images: may spill from the article column into the sidenote margin, never past the page content width. */
+.prose img { display: block; clear: right; height: auto; max-width: calc(100% / 0.6); margin: 1.5rem 0; }
+@media (max-width: 900px) { .prose img { max-width: 100%; } }
+
+/* Landing page */
+.home-header { max-width: 55rem; margin: 0 auto; padding: 1rem 1rem 2rem; border-bottom: 1px solid color-mix(in srgb, var(--muted) 35%, transparent); }
+.home-header .intro { max-width: 40rem; }
+.home-header h1 { font-size: 2.4rem; line-height: 1.15; margin: .5rem 0 1rem; }
+.home-header ul { padding-left: 1.2rem; }
+.home-header li { margin: .35rem 0; }
+.writing h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2rem 0 .75rem; }
+
+/* Code */
+code, pre { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+code { font-size: .85em; }
+pre { font-size: .8rem; line-height: 1.5; padding: .9rem 1rem; border-radius: 6px; overflow-x: auto; tab-size: 4; }
+pre code { font-size: inherit; }
+
+/* Stop mobile browsers from auto-enlarging code text. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }

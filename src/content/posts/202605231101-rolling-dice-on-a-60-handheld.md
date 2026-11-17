@@ -1,8 +1,7 @@
 ---
-title: 202605231101 Rolling Dice on a $60 handheld
-date: '2026-05-23'
+title: Rolling Dice on a $60 handheld
+date: '2026-05-23T11:01:00Z'
 ---
-#medium-post  
 
 In the last post, "[Porting Raylib to a $60 GBA clone](https://medium.com/p/6a22c268ff15)", I described how I convinced [Raylib](https://www.raylib.com/) to **draw 3D scenes** on a budget handheld — the [Miyoo Mini Flip](https://lomiyoo.com/products/miyoo-mini-flip) (MMF) — that has **no GPU** whatsoever. The trick was pairing Raylib's bare-framebuffer platform (`PLATFORM_MEMORY`) with [TinyGL](https://github.com/tslmy/tinygl/tree/mmf), a software OpenGL 1.1 renderer that skips the expensive `glReadPixels` copy step. The result: **25 FPS** on a dual-core ARM Cortex-A7.
 
