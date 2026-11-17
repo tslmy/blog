@@ -1,0 +1,117 @@
+---
+// Scroll mini-map for article pages: a scaled outline of the article with a draggable viewport box.
+---
+<div class="minimap" aria-hidden="true" hidden>
+  <div class="minimap-blocks"></div>
+  <div class="minimap-viewport"></div>
+</div>
+
+<style>
+  .minimap {
+    position: fixed;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 56px;
+    height: min(60vh, 520px);
+    z-index: 5;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    opacity: .75;
+    transition: opacity .2s;
+  }
+  .minimap:hover { opacity: 1; }
+  .minimap[hidden] { display: none; }
+  .minimap-blocks { position: absolute; inset: 0; }
+  .minimap-blocks :global(i) {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    border-radius: 1px;
+    background: color-mix(in srgb, var(--text) 22%, transparent);
+  }
+  .minimap-blocks :global(i.h) { background: color-mix(in srgb, var(--text) 60%, transparent); }
+  .minimap-blocks :global(i.code) { background: color-mix(in srgb, var(--text) 40%, transparent); }
+  .minimap-blocks :global(i.img) { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+  .minimap-viewport {
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  /* Only where the page margin has room for it. */
+  @media (max-width: 1100px) { .minimap { display: none; } }
+</style>
+
+<script>
+  const map = document.querySelector<HTMLElement>('.minimap');
+  const article = document.querySelector<HTMLElement>('article');
+  if (map && article) {
+    const blocksEl = map.querySelector<HTMLElement>('.minimap-blocks')!;
+    const vp = map.querySelector<HTMLElement>('.minimap-viewport')!;
+    let top = 0; // article top (page coords)
+    let total = 1; // article height
+    let H = 1; // minimap height
+
+    const kind = (el: Element) => {
+      if (/^H[1-6]$/.test(el.tagName)) return 'h';
+      if (el.tagName === 'PRE') return 'code';
+      if (el.tagName === 'IMG' || el.querySelector(':scope > img')) return 'img';
+      return '';
+    };
+
+    const build = () => {
+      const r = article.getBoundingClientRect();
+      top = r.top + scrollY;
+      total = article.offsetHeight;
+      H = map.clientHeight;
+      map.hidden = total < innerHeight * 1.5; // short articles don't need one
+      if (map.hidden) return;
+      blocksEl.replaceChildren();
+      const scale = H / total;
+      const els = article.querySelectorAll(':scope > h1, :scope > time, .prose > *');
+      for (const el of els) {
+        const b = (el as HTMLElement).getBoundingClientRect();
+        const bar = document.createElement('i');
+        const k = kind(el);
+        if (k) bar.className = k;
+        bar.style.top = `${((b.top + scrollY - top) * scale).toFixed(2)}px`;
+        bar.style.height = `${Math.max(2, b.height * scale - 1).toFixed(2)}px`;
+        // Paragraph-ish blocks are inset a little so they read as text, headings/code/images fill the width.
+        if (!k) bar.style.width = '85%';
+        blocksEl.append(bar);
+      }
+      update();
+    };
+
+    const update = () => {
+      if (map.hidden) return;
+      const scale = H / total;
+      const y = Math.min(Math.max(scrollY - top, 0), total);
+      const h = Math.min(innerHeight * scale, H);
+      vp.style.top = `${Math.min(y * scale, H - h)}px`;
+      vp.style.height = `${h}px`;
+    };
+
+    const seek = (clientY: number) => {
+      const r = map.getBoundingClientRect();
+      const frac = Math.min(Math.max((clientY - r.top) / r.height, 0), 1);
+      scrollTo({ top: top + frac * total - innerHeight / 2 });
+    };
+    let dragging = false;
+    map.addEventListener('pointerdown', (e) => { dragging = true; map.setPointerCapture(e.pointerId); seek(e.clientY); });
+    map.addEventListener('pointermove', (e) => { if (dragging) seek(e.clientY); });
+    map.addEventListener('pointerup', () => { dragging = false; });
+    map.addEventListener('pointercancel', () => { dragging = false; });
+
+    addEventListener('scroll', update, { passive: true });
+    addEventListener('resize', build);
+    addEventListener('load', build);
+    new ResizeObserver(build).observe(article); // images loading, fonts, sidenote toggles
+    build();
+  }
+</script>
