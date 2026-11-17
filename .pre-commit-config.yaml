@@ -1,0 +1,16 @@
+ci:
+  autofix_prs: false
+  autoupdate_schedule: monthly
+
+exclude: ^(pnpm-lock\.yaml|\.vault-synced\.json|public/vault-assets/|src/content/posts/)
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-json
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
