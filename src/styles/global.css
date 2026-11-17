@@ -35,3 +35,9 @@ time { color: var(--muted); font-size: .9rem; }
 .home-header ul { padding-left: 1.2rem; }
 .home-header li { margin: .35rem 0; }
 .writing h2 { font-size: 1.1rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 2rem 0 .75rem; }
+
+/* Code */
+code, pre { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace; }
+code { font-size: .85em; }
+pre { font-size: .8rem; line-height: 1.5; padding: .9rem 1rem; border-radius: 6px; overflow-x: auto; tab-size: 4; }
+pre code { font-size: inherit; }
