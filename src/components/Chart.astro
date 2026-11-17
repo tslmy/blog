@@ -1,0 +1,19 @@
+---
+// Interactive chart example using Observable Plot, rendered client-side.
+// Usage in MDX: <Chart data={[{x:1,y:2}, ...]} />
+const { data } = Astro.props;
+---
+<div class="chart" data-points={JSON.stringify(data)}></div>
+<script>
+  import * as Plot from '@observablehq/plot';
+  document.querySelectorAll<HTMLElement>('.chart[data-points]').forEach((el) => {
+    const data = JSON.parse(el.dataset.points!);
+    el.append(
+      Plot.plot({
+        marginLeft: 40,
+        grid: true,
+        marks: [Plot.lineY(data, { x: 'x', y: 'y', tip: true }), Plot.dot(data, { x: 'x', y: 'y' })],
+      }),
+    );
+  });
+</script>
