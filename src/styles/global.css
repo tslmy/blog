@@ -41,3 +41,6 @@ code, pre { font-family: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consola
 code { font-size: .85em; }
 pre { font-size: .8rem; line-height: 1.5; padding: .9rem 1rem; border-radius: 6px; overflow-x: auto; tab-size: 4; }
 pre code { font-size: inherit; }
+
+/* Stop mobile browsers from auto-enlarging code text. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
