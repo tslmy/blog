@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Chart from '../../components/Chart.astro';
+import Minimap from '../../components/Minimap.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts', (p) => !p.data.draft);
@@ -16,4 +17,5 @@ const { Content } = await render(post);
     <time>{post.data.date.toISOString().slice(0, 10)}</time>
     <div class="prose"><Content components={{ Chart }} /></div>
   </article>
+  <Minimap />
 </Base>
