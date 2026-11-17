@@ -18,7 +18,7 @@ export default function remarkWikiLinks() {
         out.push({
           type: 'link',
           url: `/posts/${slugify(m[1])}/`,
-          children: [{ type: 'text', value: (m[2] ?? m[1]).trim() }],
+          children: [{ type: 'text', value: (m[2] ?? m[1].replace(/^\d{12,14}[\s_-]*/, '')).trim() }],
         });
         last = m.index + m[0].length;
       }

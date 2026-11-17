@@ -1,8 +1,7 @@
 ---
-title: 202605092030 Porting Raylib to a $60 GBA clone
-date: '2026-05-10'
+title: Porting Raylib to a $60 GBA clone
+date: '2026-05-09T20:30:00Z'
 ---
-#medium-post  
 
 Making new games for old consoles has long been a joy for indie game developers, a practice nicknamed "homebrewing". This fandom has arguably created a market for _[retro gaming handhelds](https://retrocatalog.com/retro-handhelds?displayMode=preview)_: low-power devices designed & manufactured today but meant for emulating consoles from the past. [Steward Fu's homepage](https://steward-fu.github.io/website/index.htm) alone lists 187 such products.
 

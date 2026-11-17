@@ -1,6 +1,7 @@
 // Copies Obsidian notes tagged #astro-post (frontmatter `tags` or inline) into src/content/posts/.
 // Usage: BLOG_VAULT="/path/to/vault" pnpm sync   (or pass the path as the first argument)
 import fs from 'node:fs';
+import { sanitizeImage } from './lib/sanitize-image.mjs';
 import path from 'node:path';
 import matter from 'gray-matter';
 
@@ -18,6 +19,17 @@ const manifestPath = path.join(root, '.vault-synced.json');
 
 const slugify = (s) => s.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
 
+// Zettelkasten-style filename prefix: YYYYMMDDHHmm (or +ss), optionally followed by space/-/_.
+const stampRe = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})?[\s_-]*/;
+const parseStamp = (name) => {
+  const m = name.match(stampRe);
+  if (!m) return null;
+  const [, y, mo, d, h, mi, sec = '00'] = m;
+  if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31 || +h > 23 || +mi > 59) return null;
+  // Wall-clock time is stored as-is (labelled Z) so the displayed date never shifts with timezones.
+  return { date: `${y}-${mo}-${d}T${h}:${mi}:${sec}Z`, rest: name.slice(m[0].length) };
+};
+
 // Walk vault (skip hidden dirs like .obsidian/.trash; iCloud placeholders end in .icloud and are skipped).
 const mdFiles = [];
 const attachments = new Map(); // basename -> full path
@@ -33,6 +45,9 @@ const attachments = new Map(); // basename -> full path
 
 // Mask code so tags/links inside it are ignored.
 const maskCode = (s) => s.replace(/```[\s\S]*?```|`[^`\n]*`/g, (m) => ' '.repeat(m.length));
+// Apply fn only to text outside fenced/inline code.
+const outsideCode = (s, fn) =>
+  s.split(/(```[\s\S]*?```|`[^`\n]*`)/g).map((part, i) => (i % 2 ? part : fn(part))).join('');
 const tagRe = new RegExp(`(^|\\s)#${TAG}(?![\\w/-])`, 'g');
 const hasTag = (data, body) => {
   const fm = [].concat(data.tags ?? data.tag ?? []).flatMap((t) => String(t).split(/[,\s]+/));
@@ -56,9 +71,9 @@ fs.mkdirSync(postsDir, { recursive: true });
 
 for (const n of notes) {
   let body = n.content;
-  const masked = maskCode(body);
-  // Strip inline tag (only outside code).
-  body = body.replace(tagRe, (m, pre, off) => (masked.slice(off, off + m.length) === m ? pre : m));
+  // Strip the inline tag, then drop lines holding only Obsidian tags (e.g. `#medium-post`); never touch code.
+  body = outsideCode(body, (t) => t.replace(tagRe, '$1'));
+  body = outsideCode(body, (t) => t.replace(/^[ \t]*(?:#[\p{L}\p{N}_\/-]+[ \t]*)+$\n?/gmu, ''));
 
   // Embeds ![[file.ext|alt]] -> markdown images (copied to public/vault-assets).
   body = body.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (m, target, alt) => {
@@ -66,21 +81,22 @@ for (const n of notes) {
     const src = attachments.get(name);
     if (!src) return m;
     fs.mkdirSync(assetsDir, { recursive: true });
-    fs.copyFileSync(src, path.join(assetsDir, name));
+    sanitizeImage(src, path.join(assetsDir, name));
     written.push(path.join('public/vault-assets', name));
     return `![${alt && !/^\d+(x\d+)?$/.test(alt) ? alt : ''}](/vault-assets/${encodeURIComponent(name)})`;
   });
 
   // Wikilinks to unpublished notes -> plain text.
   body = body.replace(/(?<!!)\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]+))?\]\]/g, (m, target, label) =>
-    published.has(slugify(target)) ? m : (label ?? target).trim(),
+    published.has(slugify(target)) ? m : (label ?? parseStamp(target.trim())?.rest ?? target).trim(),
   );
 
+  const stamp = parseStamp(n.name);
   const stat = fs.statSync(n.file);
-  const date = n.data.date ?? n.data.created ?? stat.birthtime;
+  const date = stamp?.date ?? n.data.date ?? n.data.created ?? stat.birthtime;
   const fm = {
-    title: n.data.title ?? n.name,
-    date: date instanceof Date ? date.toISOString().slice(0, 10) : String(date),
+    title: n.data.title ?? (stamp?.rest || n.name),
+    date: date instanceof Date ? date.toISOString() : String(date),
     ...(n.data.description ? { description: n.data.description } : {}),
     ...(n.data.draft ? { draft: true } : {}),
   };
