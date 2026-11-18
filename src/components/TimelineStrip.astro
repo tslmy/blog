@@ -1,0 +1,192 @@
+---
+// Pinned "collect as you read" strip for posts with a ```timeline block.
+// Each timeline item is matched to its photo in the post (by image path) or to a paragraph (`anchor:` text).
+// When that photo's top scrolls up past the reading line (30% down the viewport), the item flies into an inventory slot in the strip.
+// Pure enhancement: without JS (or without a timeline) nothing renders; the full timeline stays the source of truth.
+---
+<script>
+  type Item = { name: string; img: string; focus: string; anchor: string; a: number; b: number };
+  type Data = { A: number; B: number; now: number; items: Item[] };
+
+  const fig = document.querySelector<HTMLElement>('.timeline[data-strip]');
+  const prose = fig?.closest('.prose');
+  if (fig && prose) init(fig, prose as HTMLElement, JSON.parse(fig.dataset.strip!) as Data);
+
+  function init(fig: HTMLElement, prose: HTMLElement, data: Data) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+    const phone = matchMedia('(max-width: 600px)');
+    const path = (src: string) => decodeURIComponent(new URL(src, location.href).pathname);
+    const norm = (s: string) => s.replace(/[*_`]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+
+    // Pair each item with the element that introduces it in the post.
+    const photos = [...prose.querySelectorAll<HTMLImageElement>('img')].filter((im) => !fig.contains(im));
+    const paras = [...prose.querySelectorAll<HTMLElement>(':scope > p, :scope > blockquote')];
+    const found = data.items
+      .map((it, i) => {
+        let el: HTMLElement | undefined;
+        if (it.img) el = photos.find((im) => path(im.src) === path(it.img));
+        if (!el && it.anchor) el = paras.find((p) => norm(p.textContent ?? '').includes(norm(it.anchor)));
+        return el ? { ...it, i, el, isPhoto: el.tagName === 'IMG' } : null;
+      })
+      .filter((x) => x !== null)
+      .sort((p, q) => (p.el.compareDocumentPosition(q.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    if (found.length < 2) return;
+
+    // --- DOM ---
+    const nav = document.createElement('nav');
+    nav.className = 'tl-strip';
+    nav.setAttribute('aria-label', 'Backpacks so far');
+    nav.innerHTML = `<div class="tl-strip-in">
+      <span class="tl-strip-yr">${Math.ceil(data.A)}</span>
+      <div class="tl-strip-track"><svg class="tl-strip-lines" aria-hidden="true"></svg><div class="tl-strip-bars" aria-hidden="true"></div></div>
+      <span class="tl-strip-yr">now</span>
+      <span class="tl-strip-count" aria-live="polite"></span>
+    </div>`;
+    const track = nav.querySelector<HTMLElement>('.tl-strip-track')!;
+    const bars = nav.querySelector<HTMLElement>('.tl-strip-bars')!;
+    const lines = nav.querySelector<SVGSVGElement>('.tl-strip-lines')!;
+    const count = nav.querySelector<HTMLElement>('.tl-strip-count')!;
+    const frac = (t: number) => (Math.min(Math.max(t, data.A), data.B) - data.A) / (data.B - data.A);
+
+    const slots = found.map((f, k) => {
+      if (!f.el.id) f.el.id = `bag-${k + 1}`;
+      const a = document.createElement('a');
+      a.className = 'tl-strip-slot';
+      a.href = `#${f.el.id}`;
+      a.tabIndex = -1;
+      a.setAttribute('aria-hidden', 'true');
+      a.title = f.name;
+      a.innerHTML = f.img
+        ? `<img src="${f.img}" alt="${f.name.replace(/"/g, '&quot;')}"${f.focus ? ` style="object-position:${f.focus}"` : ''}>`
+        : `<span class="tl-strip-q" role="img" aria-label="${f.name.replace(/"/g, '&quot;')}">?</span>`;
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        f.el.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(null, '', a.href);
+      });
+      track.append(a);
+      const bar = document.createElement('i');
+      bar.style.left = `${frac(f.a) * 100}%`;
+      bar.style.width = `${(frac(f.b) - frac(f.a)) * 100}%`;
+      bars.append(bar);
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      lines.append(line);
+      return { a, bar, line };
+    });
+    document.body.append(nav);
+
+    // Lay slots out at their start dates, nudged apart so they never overlap.
+    const layout = () => {
+      const W = track.clientWidth;
+      const S = slots[0].a.offsetWidth || 28;
+      const gap = 3;
+      const order = found.map((f, k) => ({ k, x: frac(f.a) * W - S / 2 })).sort((p, q) => p.x - q.x);
+      for (let j = 0; j < order.length; j++) order[j].x = Math.max(order[j].x, j ? order[j - 1].x + S + gap : 0);
+      for (let j = order.length - 1; j >= 0; j--)
+        order[j].x = Math.min(order[j].x, j < order.length - 1 ? order[j + 1].x - S - gap : W - S);
+      const H = track.clientHeight;
+      lines.setAttribute('viewBox', `0 0 ${W} ${H}`);
+      for (const { k, x } of order) {
+        slots[k].a.style.left = `${Math.max(0, x)}px`;
+        const l = slots[k].line;
+        l.setAttribute('x1', String(Math.max(0, x) + S / 2));
+        l.setAttribute('y1', String(S + 2));
+        l.setAttribute('x2', String(frac(found[k].a) * W));
+        l.setAttribute('y2', String(H - 6));
+      }
+    };
+
+    // --- State: collected bags persist; the highlighted one is the last photo you scrolled past ---
+    let got = found.map(() => false);
+    let first = true;
+    let peekTimer = 0;
+    let peekUntil = 0;
+    let up = false;
+    let focused = false;
+    let lastY = scrollY;
+
+    const fly = (k: number) => {
+      const f = found[k];
+      const r = slots[k].a.getBoundingClientRect();
+      const slide = nav.getBoundingClientRect().top; // strip may still be sliding in
+      const to = { left: r.left, top: r.top - slide, width: r.width, height: r.height };
+      if (reduce.matches || !f.isPhoto) {
+        slots[k].a.animate([{ transform: 'scale(.4)', opacity: 0 }, { transform: 'scale(1)', opacity: 1 }], { duration: reduce.matches ? 1 : 260, easing: 'ease-out' });
+        return;
+      }
+      const from = f.el.getBoundingClientRect();
+      if (from.bottom < 0 || from.top > innerHeight) return; // jumped past it; no flight
+      const ghost = (f.el as HTMLImageElement).cloneNode() as HTMLImageElement;
+      ghost.removeAttribute('id');
+      ghost.className = 'tl-strip-ghost';
+      Object.assign(ghost.style, { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px` });
+      document.body.append(ghost);
+      slots[k].a.style.opacity = '0';
+      ghost
+        .animate(
+          [
+            { left: `${from.left}px`, top: `${from.top}px`, width: `${from.width}px`, height: `${from.height}px`, borderRadius: '0px' },
+            { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`, borderRadius: '5px' },
+          ],
+          { duration: 520, easing: 'cubic-bezier(.5,0,.2,1)' },
+        )
+        .finished.then(() => {
+          ghost.remove();
+          slots[k].a.style.opacity = '';
+          slots[k].a.animate([{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
+        });
+    };
+
+    const update = () => {
+      const lineY = innerHeight * 0.3;
+      const passed = found.map((f) => f.el.getBoundingClientRect().top < lineY);
+      // Once collected, a bag stays in the inventory, even when you scroll or jump back.
+      const next = passed.map((p, k) => p || got[k]);
+      const added = next.flatMap((g, k) => (g && !got[k] ? [k] : []));
+      next.forEach((g, k) => {
+        const s = slots[k];
+        s.a.classList.toggle('got', g);
+        s.a.tabIndex = g ? 0 : -1;
+        g ? s.a.removeAttribute('aria-hidden') : s.a.setAttribute('aria-hidden', 'true');
+        s.bar.classList.toggle('got', g);
+        s.line.classList.toggle('got', g);
+      });
+      const cur = passed.lastIndexOf(true);
+      slots.forEach((s, k) => {
+        s.a.classList.toggle('cur', k === cur);
+        s.bar.classList.toggle('cur', k === cur);
+        s.line.classList.toggle('cur', k === cur);
+      });
+      const n = next.filter(Boolean).length;
+      count.textContent = `${n}/${found.length}`;
+      count.setAttribute('aria-label', `${n} of ${found.length} collected`);
+
+      // Show between the first photo and the full timeline (the finale).
+      const inRange = passed.some(Boolean) && fig.getBoundingClientRect().top > innerHeight * 0.75;
+      if (scrollY < lastY - 2) up = true;
+      else if (scrollY > lastY + 2) up = false;
+      lastY = scrollY;
+      if (!first && added.length) {
+        if (added.length === 1) requestAnimationFrame(() => fly(added[0]));
+        // Phones: peek for a moment when something is collected, then get out of the way.
+        peekUntil = performance.now() + 2200;
+        clearTimeout(peekTimer);
+        peekTimer = window.setTimeout(update, 2300);
+      }
+      const show = inRange && (!phone.matches || up || focused || performance.now() < peekUntil);
+      nav.classList.toggle('show', show);
+      nav.inert = !show;
+      got = next;
+      first = false;
+    };
+
+    let raf = 0;
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; update(); }); };
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('resize', () => { layout(); onScroll(); });
+    nav.addEventListener('focusin', () => { focused = true; update(); });
+    nav.addEventListener('focusout', () => { focused = false; update(); });
+    layout();
+    update();
+  }
+</script>

@@ -16,6 +16,7 @@
 //       - { at: 2016-05, label: Simply Orange vs. MacBook Air }
 //     quote: The bag was so watertight that…
 //     status: Passed on
+//     anchor: watertight   # optional: text of the paragraph that introduces it, if it has no photo in the post
 // ```
 import { visit } from 'unist-util-visit';
 import { parse } from 'yaml';
@@ -155,7 +156,16 @@ function render(src) {
     .filter(Boolean)
     .join('');
 
-  return `<figure class="timeline" id="${id}">
+  // Data for the pinned "collect as you read" strip (src/components/TimelineStrip.astro).
+  const strip = {
+    A, B, now: NOW,
+    items: items.map((it) => {
+      const own = it.spans.filter((s) => s.kind !== 'afterlife');
+      return { name: String(it.name), img: asset(it.img), focus: it.focus ?? '', anchor: it.anchor ?? '',
+        a: Math.min(...own.map((s) => s.a)), b: Math.max(...own.map((s) => s.b)) };
+    }),
+  };
+  return `<figure class="timeline" id="${id}" data-strip="${esc(JSON.stringify(strip))}">
 <style>${rules}</style>
 ${items.map((_, i) => `<input type="radio" class="tl-radio" name="${id}" id="${id}-${i}"${i === sel ? ' checked' : ''} aria-label="${esc(items[i].name)}">`).join('')}
 <div class="tl-scroll"><div class="tl-inner">
