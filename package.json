@@ -16,7 +16,8 @@
     "@observablehq/plot": "^0.6.19",
     "astro": "^7.4.12",
     "gray-matter": "^4.0.3",
-    "unist-util-visit": "^5.2.0"
+    "unist-util-visit": "^5.2.0",
+    "yaml": "^2.9.1"
   },
   "packageManager": "pnpm@12.18.0"
 }

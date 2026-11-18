@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import remarkWikiLinks from './src/plugins/remark-wikilinks.mjs';
 import { unified } from '@astrojs/markdown-remark';
+import remarkTimeline from './src/plugins/remark-timeline.mjs';
 import rehypeSidenotes from './src/plugins/rehype-sidenotes.mjs';
 
 export default defineConfig({
@@ -9,7 +10,7 @@ export default defineConfig({
   integrations: [mdx()],
   markdown: {
     processor: unified({
-      remarkPlugins: [remarkWikiLinks],
+      remarkPlugins: [remarkWikiLinks, remarkTimeline],
       rehypePlugins: [rehypeSidenotes],
     }),
   },
