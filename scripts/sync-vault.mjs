@@ -80,9 +80,13 @@ for (const n of notes) {
     const name = path.basename(target.trim());
     const src = attachments.get(name);
     if (!src) return m;
-    fs.mkdirSync(assetsDir, { recursive: true });
-    sanitizeImage(src, path.join(assetsDir, name));
-    written.push(path.join('public/vault-assets', name));
+    const rel = path.join('public/vault-assets', name);
+    if (!written.includes(rel)) {
+      // An image can be embedded more than once (e.g. in the text and in a ```timeline block); copy it once.
+      fs.mkdirSync(assetsDir, { recursive: true });
+      sanitizeImage(src, path.join(assetsDir, name));
+      written.push(rel);
+    }
     return `![${alt && !/^\d+(x\d+)?$/.test(alt) ? alt : ''}](/vault-assets/${encodeURIComponent(name)})`;
   });
 
