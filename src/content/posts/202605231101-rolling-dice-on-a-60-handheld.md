@@ -2,7 +2,6 @@
 title: Rolling Dice on a $60 handheld
 date: '2026-05-23T11:01:00Z'
 ---
-
 In the last post, "[Porting Raylib to a $60 GBA clone](https://medium.com/p/6a22c268ff15)", I described how I convinced [Raylib](https://www.raylib.com/) to **draw 3D scenes** on a budget handheld — the [Miyoo Mini Flip](https://lomiyoo.com/products/miyoo-mini-flip) (MMF) — that has **no GPU** whatsoever. The trick was pairing Raylib's bare-framebuffer platform (`PLATFORM_MEMORY`) with [TinyGL](https://github.com/tslmy/tinygl/tree/mmf), a software OpenGL 1.1 renderer that skips the expensive `glReadPixels` copy step. The result: **25 FPS** on a dual-core ARM Cortex-A7.
 
 That was the framework; This post is about building **an actual app** on top of it. Where we left off, I teased that the end goal was porting [my THREE.js dice roller](https://github.com/tslmy/threejs-dice) to this little device. The web version uses a browser's GPU, a physics engine written in JavaScript, and environment lighting from an HDR panorama. The MMF has none of those luxuries. The question was: how much of that visual quality could survive the translation to a CPU-only ARM chip?
