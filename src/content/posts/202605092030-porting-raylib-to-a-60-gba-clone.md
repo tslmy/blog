@@ -2,7 +2,6 @@
 title: Porting Raylib to a $60 GBA clone
 date: '2026-05-09T20:30:00Z'
 ---
-
 Making new games for old consoles has long been a joy for indie game developers, a practice nicknamed "homebrewing". This fandom has arguably created a market for _[retro gaming handhelds](https://retrocatalog.com/retro-handhelds?displayMode=preview)_: low-power devices designed & manufactured today but meant for emulating consoles from the past. [Steward Fu's homepage](https://steward-fu.github.io/website/index.htm) alone lists 187 such products.
 
 Game Boy Advance (GBA), a handheld from 25 years ago, is one of homebrewers' favorite target platform. Earlier this year, I dabbled in this hobby by [hacking an idle game](https://github.com/tslmy/sips) created in 2023. As it was perhaps apparent in [my previous post](https://blog.myli.page/adding-unit-tests-to-a-game-for-the-game-boy-advance-e5e9578ac207), that was my **first exposure to game development**.
