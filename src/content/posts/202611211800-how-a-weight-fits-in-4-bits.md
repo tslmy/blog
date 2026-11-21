@@ -19,7 +19,7 @@ description: Codebook quantization, step by step, with live figures.
 </tbody>
 </table></div>
 
-<p><strong>First, plain quantization.</strong> A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy instead:</p>
+<p id="plain-quantization" data-toc="Plain quantization"><strong>First, plain quantization.</strong> A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy instead:</p>
 <ul>
 <li><strong>Levels.</strong> Choose a small set of allowed values, called levels.</li>
 <li><strong>Index.</strong> For each weight, remember only which level is nearest. With \(2^b\) levels the index takes \(b\) bits, so 16 levels take \(b = 4\) bits: an eighth of the 32, and the model shrinks \(32/4 = 8\) times.</li>
@@ -50,7 +50,7 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 <p>A single scale for everything is the weak point.</p>
 
-<p><strong>Step 1: cut each row into groups.</strong></p>
+<p id="step-1" data-toc="Step 1: cut rows into groups"><strong>Step 1: cut each row into groups.</strong></p>
 <ul>
 <li>A weight matrix has millions of numbers, and one outlier anywhere would stretch the levels for all of them.</li>
 <li>So each row is split, from left to right, into groups of 64 consecutive weights (128 in Whistle), and each group gets its own scale. A group never spans rows. An outlier now only spoils its own group.</li>
@@ -113,7 +113,7 @@ description: Codebook quantization, step by step, with live figures.
   <table class="sx-gtab"></table>
 </figure>
 
-<p><strong>Step 2: rotate the group.</strong> Grouping stops an outlier from spoiling its whole row, but inside its own group it still stretches the levels for the other 63 weights.</p>
+<p id="step-2" data-toc="Step 2: rotate the group"><strong>Step 2: rotate the group.</strong> Grouping stops an outlier from spoiling its whole row, but inside its own group it still stretches the levels for the other 63 weights.</p>
 <p>Here are the groups from the figure above, split into those that contain an outlier and the rest. Each dot is one group, and the tick marks the average:</p>
 
 <figure class="widget wide" data-widget="outlierloss">
@@ -394,7 +394,7 @@ Here are the entries of these matrices, before the scaling:</p>
 </tbody>
 </table></div>
 
-<p><strong>Step 3: snap to a codebook made for bell curves.</strong></p>
+<p id="step-3" data-toc="Step 3: snap to a codebook"><strong>Step 3: snap to a codebook made for bell curves.</strong></p>
 <ul>
 <li>Rotated groups all have roughly the same bell shape (once divided by their length), so one set of levels can serve all of them.</li>
 <li>The levels come from <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a> run on a Gaussian: dense near zero, where most values are, and sparse in the tails. That set is the codebook.</li>
@@ -452,7 +452,7 @@ Here are the entries of these matrices, before the scaling:</p>
 <li>Whistle is 16.9 MB.</li>
 </ul>
 
-<p><strong>Step 4: never rebuild the weights.</strong></p>
+<p id="step-4" data-toc="Step 4: never rebuild the weights"><strong>Step 4: never rebuild the weights.</strong></p>
 <ul>
 <li>To use a weight you'd normally decode it: look up its level, multiply by the length, rotate back.</li>
 <li>Doing that for 135 million weights per word would be slow.</li>
