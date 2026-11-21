@@ -162,6 +162,7 @@ description: Codebook quantization, step by step, with live figures.
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail">
   <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each of the 16 grid points is a possible stored value. Each solid marker sits where its group is stored, with a trail of shadows behind it back to the group's real weights, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a marker to select a group and make its square and outline thicker.</figcaption>
+  <div class="sx-controls"><button data-act="replay">replay the movement</button></div>
   <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels and the grid, each drawn where it is stored, with a trail of fading shadows back to its real weights"></svg>
   <p class="sx-cap2">Here is how much each group loses to rounding, the length of its trail as a share of the group's length, split into groups with an outlier and the rest, as in the earlier figure of this step:</p>
   <svg class="sx-ol" data-v="loss" viewBox="0 0 640 200" role="img" aria-label="Rounding error of each group, split into groups that contain an outlier and groups that do not"></svg>
