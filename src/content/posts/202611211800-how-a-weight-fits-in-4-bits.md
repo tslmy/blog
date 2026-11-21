@@ -166,7 +166,7 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits">
-  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them. Each of the 16 grid points is a possible stored value. A hollow ring marks where a group is stored, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a dot to select a group and make its square and arrow thicker.</figcaption>
+  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each of the 16 grid points is a possible stored value. A hollow ring marks where a group is stored, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a dot to select a group and make its square and arrow thicker.</figcaption>
   <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels, the grid, and an arrow from each point to the grid point it is stored as"></svg>
 </figure>
 
