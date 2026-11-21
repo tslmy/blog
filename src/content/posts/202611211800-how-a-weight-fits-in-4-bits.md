@@ -113,6 +113,14 @@ description: Codebook quantization, step by step, with live figures.
 </figure>
 
 <p><strong>Step 2: rotate the group.</strong> Grouping stops an outlier from spoiling its whole row, but inside its own group it still stretches the levels for the other 63 weights.</p>
+<p>Here are the groups from the figure above, split into those that contain an outlier and the rest. Each dot is one group, and the tick marks the average:</p>
+
+<figure class="widget wide" data-widget="outlierloss">
+  <figcaption><strong>Groups with an outlier lose more.</strong> It follows the matrix and the groups per row you chose above, and "New matrix" and the "outliers" box change it too.</figcaption>
+  <svg class="sx-ol" viewBox="0 0 640 200" role="img" aria-label="Average rounding error of each group, split into groups that contain an outlier and groups that do not"></svg>
+  <p class="sx-note" aria-live="polite">&nbsp;</p>
+</figure>
+
 <ul>
 <li>What matters is how spiky the group is: \(\max_j |w_j| \,/\, \ell\), its largest weight compared with the group's overall size, which is its length \(\ell\).</li>
 <li>You can't remove a spike without changing the weights.</li>
