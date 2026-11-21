@@ -38,6 +38,7 @@ description: Codebook quantization, step by step, with live figures.
     <button data-act="new">New matrix</button>
   </div>
   <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and one scale bar per group for the selected row"></svg>
+  <p class="sx-gcap">Bars: the scale of each group in the selected row, which is its largest weight (also printed on the bar). A gold bar means the group contains an outlier, which is marked with a gold outline in both matrices.</p>
   <p class="sx-note" data-v="info" aria-live="polite">&nbsp;</p>
   <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
   <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmap of the rounding error of each weight"></svg>
