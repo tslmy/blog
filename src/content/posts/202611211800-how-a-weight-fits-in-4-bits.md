@@ -155,15 +155,15 @@ description: Codebook quantization, step by step, with live figures.
 <p>Now let's see what quantization does to these points:</p>
 <ul>
 <li>The 2-bit levels, four per axis, form a grid of 16 points inside a square. A group is stored as the nearest grid point: each of its two weights is rounded to the nearest level, and the two level numbers (2 bits each) are what is saved.</li>
-<li>The arrow from a dot shows how far that rounding moves it, which is the group's rounding error.</li>
+<li>A trail of fading shadows shows how far that rounding moves a group, from its real weights (the faintest shadow) to the grid point it is stored as (the solid marker). The length of the trail is the group's rounding error.</li>
 <li>A point close to an axis has one big weight and one tiny one, so its square must be as large as the point is long, and the grid is coarse.</li>
 <li>A point on the diagonal has two equal weights, which is as flat as it gets: the square is smaller and the grid finer.</li>
 </ul>
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss">
-  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each of the 16 grid points is a possible stored value. A hollow outline marks where a group is stored, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a dot to select a group and make its square and arrow thicker.</figcaption>
-  <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels, the grid, and an arrow from each point to the grid point it is stored as"></svg>
-  <p class="sx-cap2">Here is how much each group loses to rounding, the length of its arrow as a share of the group's length, split into groups with an outlier and the rest, as in the earlier figure of this step:</p>
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail">
+  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each of the 16 grid points is a possible stored value. Each solid marker sits where its group is stored, with a trail of shadows behind it back to the group's real weights, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a marker to select a group and make its square and outline thicker.</figcaption>
+  <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels and the grid, each drawn where it is stored, with a trail of fading shadows back to its real weights"></svg>
+  <p class="sx-cap2">Here is how much each group loses to rounding, the length of its trail as a share of the group's length, split into groups with an outlier and the rest, as in the earlier figure of this step:</p>
   <svg class="sx-ol" data-v="loss" viewBox="0 0 640 200" role="img" aria-label="Rounding error of each group, split into groups that contain an outlier and groups that do not"></svg>
   <p class="sx-note" data-v="lossnote" aria-live="polite">&nbsp;</p>
 </figure>
