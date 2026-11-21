@@ -1,12 +1,12 @@
 import { $ } from '../core/dom.js';
+import { gauss, nextSeed, rng } from '../core/random.js';
+import { fwht } from '../core/linalg.js';
 
 // 7. Rotation spreads outliers: bars and histograms before and after
 export default (fig) => {
-  const rng = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   const state = { n: 64, k: 1, s: 20, zoom: false }; let seed = 7;
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), NS = 'http://www.w3.org/2000/svg';
   const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
-  const fwht = (x) => { const y = x.slice(), n = y.length; for (let h = 1; h < n; h *= 2) for (let i = 0; i < n; i += 2 * h) for (let j = i; j < i + h; j++) { const a = y[j], b = y[j + h]; y[j] = a + b; y[j + h] = a - b; } return y.map((v) => v / Math.sqrt(n)); };
   const stats = (x) => {                                   // crest factor and the error of plain 16 evenly spaced levels
     const m = Math.max(...x.map(Math.abs)), e = x.reduce((a, v) => a + v * v, 0), step = 2 * m / 15;
     const err = x.reduce((a, v) => a + (-m + Math.round((v + m) / step) * step - v) ** 2, 0);
@@ -25,7 +25,7 @@ export default (fig) => {
     return kids;
   };
   const draw = () => {
-    const r = rng(seed), g = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r());
+    const r = rng(seed), g = () => gauss(r);
     const x = Array.from({ length: state.n }, g), k = Math.min(state.k, state.n);
     for (let j = 0; j < k; j++) x[Math.floor(r() * state.n)] = (r() < .5 ? -1 : 1) * state.s;
     const y = fwht(x), mx = Math.max(...x.map(Math.abs)), my = Math.max(...y.map(Math.abs)), R = Math.max(mx, my);
@@ -42,7 +42,7 @@ export default (fig) => {
     $(fig, `[data-o=${i.dataset.k}]`).textContent = state[i.dataset.k]; draw();
   }));
   fig.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.act === 'new') seed = (seed * 48271) % 2147483647;
+    if (b.dataset.act === 'new') seed = nextSeed(seed);
     else { state.zoom = !state.zoom; b.setAttribute('aria-pressed', String(state.zoom)); }
     draw();
   }));

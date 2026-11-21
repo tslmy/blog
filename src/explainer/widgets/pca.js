@@ -1,14 +1,14 @@
 import { $ } from '../core/dom.js';
-import { jacobi } from '../core/linalg.js';
+import { fwht, jacobi } from '../core/linalg.js';
+import { gauss, nextSeed, rng } from '../core/random.js';
 
 // 6b. PCA versus the Hadamard rotation on the same groups of 8 weights
 export default (fig) => {
   const M = 24, D = 8, CLIP = 4, state = { ds: 'spiky' }; let seed = 3;
-  const rng = (sd) => () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), NS = 'http://www.w3.org/2000/svg';
   const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
   const data = () => {
-    const r = rng(seed), g = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r());
+    const r = rng(seed), g = () => gauss(r);
     if (state.ds === 'spiky') return Array.from({ length: M }, () => { const row = Array.from({ length: D }, () => .35 * g()); row[Math.floor(r() * D)] += (r() < .5 ? -1 : 1) * (3.5 + .6 * g()); return row; });
     const u = Array.from({ length: D }, g), l = Math.hypot(...u), uu = u.map((x) => x / l);
     return Array.from({ length: M }, () => { const a = g(); return uu.map((x) => 3.2 * a * x + .45 * g()); });
@@ -19,7 +19,6 @@ export default (fig) => {
     const cols = eig(C);                               // cols[k][i] = component i of eigenvector k
     return X.map((r) => cols.map((v) => r.reduce((a, x, i) => a + x * v[i], 0)));
   };
-  const fwht = (x) => { const y = x.slice(); for (let h = 1; h < D; h *= 2) for (let i = 0; i < D; i += 2 * h) for (let j = i; j < i + h; j++) { const a = y[j], b = y[j + h]; y[j] = a + b; y[j + h] = a - b; } return y.map((v) => v / Math.sqrt(D)); };
   const stats = (Y) => {
     const tot = Y.reduce((a, r) => a + r.reduce((b, x) => b + x * x, 0), 0), cols = Array.from({ length: D }, (_, c) => Y.reduce((a, r) => a + r[c] * r[c], 0) / tot);
     let spike = 0, err = 0;
@@ -42,6 +41,6 @@ export default (fig) => {
       : `The weights share one direction. PCA finds it and moves nearly all the energy into the first coordinate (${(Math.max(...res[1].cols) * 100).toFixed(0)}%), which is ideal for dropping the other seven, but each group becomes one big weight plus noise: the error rises from ${(res[0].err * 100).toFixed(0)}% to ${(res[1].err * 100).toFixed(0)}%. A flattening rotation does not need to know the direction and spreads everything out.`;
   };
   fig.querySelectorAll('[data-ds]').forEach((b) => b.addEventListener('click', () => { state.ds = b.dataset.ds; fig.querySelectorAll('[data-ds]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); }));
-  $(fig, '[data-act=new]').addEventListener('click', () => { seed = (seed * 48271) % 2147483647; draw(); });
+  $(fig, '[data-act=new]').addEventListener('click', () => { seed = nextSeed(seed); draw(); });
   draw();
 };

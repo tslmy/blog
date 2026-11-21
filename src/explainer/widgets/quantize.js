@@ -1,16 +1,16 @@
 import { $, el } from '../core/dom.js';
 import { mel, setMath } from '../core/math.js';
+import { gauss, nextSeed, rng } from '../core/random.js';
 
 // 0. Plain quantization: fewer bits, coarser rounding, what an outlier does to it, and the bits themselves
 export default (fig) => {
   const N = 40, SIGMA = 0.05, RANGE = 0.5, state = { bits: 3, outlier: false, sel: 3 }; let seed = 5;
-  const rng = (sd) => () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), panel = $(fig, '.sx-bits'), NS = 'http://www.w3.org/2000/svg';
   const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
   const f32 = (x) => { const d = new DataView(new ArrayBuffer(4)); d.setFloat32(0, x); return d.getUint32(0).toString(2).padStart(32, '0'); };
   const boxes = (str, cls) => { const w = el('div', 'sx-bitrow'); [...str].forEach((c, i) => { const b = el('span', 'b ' + (cls instanceof Function ? cls(i) : cls), c); w.append(b); }); return w; };
   const draw = () => {
-    const r = rng(seed), g = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r());
+    const r = rng(seed), g = () => gauss(r);
     const w = Array.from({ length: N }, () => g() * SIGMA); if (state.outlier) w[Math.floor(r() * N)] = 9 * SIGMA * (r() < .5 ? -1 : 1);
     const m = Math.max(...w.map(Math.abs)), n = 2 ** state.bits, step = 2 * m / (n - 1);
     const idxOf = (x) => Math.round((x + m) / step), levels = Array.from({ length: n }, (_, k) => -m + k * step), nearest = (x) => -m + idxOf(x) * step;
@@ -55,6 +55,6 @@ export default (fig) => {
   svg.addEventListener('click', (e) => { const i = e.target.dataset && e.target.dataset.i; if (i != null) { state.sel = +i; draw(); } });
   $(fig, '[data-k=bits]').addEventListener('input', (e) => { state.bits = +e.target.value; $(fig, '[data-o=bits]').textContent = state.bits; draw(); });
   $(fig, '[data-k=outlier]').addEventListener('click', (e) => { state.outlier = !state.outlier; e.currentTarget.setAttribute('aria-pressed', String(state.outlier)); draw(); });
-  $(fig, '[data-act=new]').addEventListener('click', () => { seed = (seed * 48271) % 2147483647; draw(); });
+  $(fig, '[data-act=new]').addEventListener('click', () => { seed = nextSeed(seed); draw(); });
   $(fig, '[data-o=bits]').textContent = state.bits; draw();
 };

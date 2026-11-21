@@ -1,5 +1,6 @@
 import { $ } from '../core/dom.js';
-import { rotate } from '../core/linalg.js';
+import { gauss, nextSeed, rng } from '../core/random.js';
+import { fwht } from '../core/linalg.js';
 
 // 7. Quantizing one group: evenly spaced levels vs rotation + Gaussian codebook
 export default (fig) => {
@@ -9,8 +10,6 @@ export default (fig) => {
     4: [-2.71, -2.044, -1.595, -1.233, -0.922, -0.64, -0.373, -0.114, 0.144, 0.404, 0.673, 0.961, 1.276, 1.637, 2.084, 2.741],
   };
   const state = { rotate: true, codebook: true, heavy: true, bits4: false };
-  const rng = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const gauss = (r) => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r());
   // heavy tails: Student's t with 3 degrees of freedom, a common model for weights with outliers
   const sample = (r) => state.heavy ? gauss(r) / Math.sqrt((gauss(r) ** 2 + gauss(r) ** 2 + gauss(r) ** 2) / 3) : gauss(r);
   const group = (r) => Array.from({ length: G }, () => sample(r) * SIGMA);
@@ -19,7 +18,7 @@ export default (fig) => {
   // Quantize one group with the current settings. Returns display values (in level units), the levels,
   // and the error after decoding, relative to the group's own size (rms).
   const quant = (w) => {
-    const bits = state.bits4 ? 4 : 2, n = 1 << bits, v = state.rotate ? rotate(w) : w;
+    const bits = state.bits4 ? 4 : 2, n = 1 << bits, v = state.rotate ? fwht(w) : w;
     let s, levels;
     if (state.codebook) { s = norm(v) / Math.sqrt(G); levels = CB[bits]; }          // length-scaled Gaussian codebook
     else {                                                                          // evenly spaced up to the largest value
@@ -27,7 +26,7 @@ export default (fig) => {
       levels = Array.from({ length: n }, (_, k) => (-m + (2 * m / n) * (k + 0.5)) / s);
     }
     const shown = v.map((x) => x / s), q = shown.map((x) => nearest(levels, x) * s);
-    const back = state.rotate ? rotate(q) : q;                                      // the rotation is its own inverse
+    const back = state.rotate ? fwht(q) : q;                                      // the rotation is its own inverse
     const err = norm(w.map((x, i) => x - back[i])) / norm(w);
     return { shown, levels, err, n };
   };
@@ -55,7 +54,7 @@ export default (fig) => {
       + (state.rotate && state.codebook ? ' This is the combination the iPod runs.' : '');
   };
   fig.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.act === 'new') seed = (seed * 48271) % 2147483647;
+    if (b.dataset.act === 'new') seed = nextSeed(seed);
     else { state[b.dataset.k] = !state[b.dataset.k]; b.setAttribute('aria-pressed', String(state[b.dataset.k])); }
     draw();
   }));

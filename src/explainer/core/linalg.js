@@ -1,11 +1,17 @@
-// Small linear-algebra helpers: Walsh–Hadamard matrices and Jacobi eigenvectors.
-// Walsh–Hadamard helpers (unnormalized ±1 entries; divide by √n where it matters)
+// Small linear-algebra helpers: the Walsh–Hadamard matrix and transform, and Jacobi eigenvectors.
+// The Walsh–Hadamard matrix of size n (a power of two), built by doubling: entries are ±1, unnormalized.
 export const hadamard = (n) => {
   let h = [[1]];
   while (h.length < n) h = [...h.map((r) => [...r, ...r]), ...h.map((r) => [...r, ...r.map((v) => -v)])];
   return h;
 };
-export const rotate = (v) => { const n = v.length, h = hadamard(n), s = Math.sqrt(n); return h.map((row) => row.reduce((a, x, j) => a + x * v[j], 0) / s); };
+// The fast Walsh–Hadamard transform, normalized by √n so that it keeps lengths and is its own inverse:
+// log2(n) rounds of adding and subtracting pairs, no multiplications.
+export const fwht = (x) => {
+  const y = x.slice(), n = y.length;
+  for (let h = 1; h < n; h *= 2) for (let i = 0; i < n; i += 2 * h) for (let j = i; j < i + h; j++) { const a = y[j], b = y[j + h]; y[j] = a + b; y[j + h] = a - b; }
+  return y.map((v) => v / Math.sqrt(n));
+};
 // Jacobi rotations for a small symmetric matrix: eigenvectors (biggest eigenvalue first) and eigenvalues
 export const jacobi = (C) => {
   const D = C.length, A = C.map((r) => r.slice()), V = Array.from({ length: D }, (_, i) => Array.from({ length: D }, (_, j) => (i === j ? 1 : 0)));

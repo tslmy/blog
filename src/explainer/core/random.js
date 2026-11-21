@@ -1,5 +1,4 @@
-// Seeded random numbers, so every figure shows the same example until "new" is pressed.
-// 6-. Groups of two weights, in stages. Figures with the same data-scene share their mock groups (and the levels option); data-layers says what each one draws:
-// strips (three lines of cells), points, quant (squares, grids, arrows and rings), bits (binary labels), ghost (where the groups started), curve (spikiness against angle), loss (how much each group loses).
-// A group has a direction and a length; its two weights are length times (cos, sin). With "one fixed grid" the length is divided out, so the dots sit on a circle of length 1.
-export const rng2 = (sd) => () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+// Seeded random numbers, so every figure shows the same example until its "new" button is pressed.
+export const rng = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;                         // Park–Miller, uniform in (0, 1)
+export const gauss = (rand) => Math.sqrt(-2 * Math.log(rand() + 1e-12)) * Math.cos(2 * Math.PI * rand());     // Box–Muller, standard normal
+export const nextSeed = (seed) => (seed * 48271) % 2147483647;                                                // what a "new" button does to the seed

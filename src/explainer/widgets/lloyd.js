@@ -1,10 +1,10 @@
 import { $, sv } from '../core/dom.js';
-import { rng2 } from '../core/random.js';
+import { gauss, rng } from '../core/random.js';
 
 // 10. Lloyd's algorithm, step by step: the levels start evenly spaced and move to where the values are
 export default (fig) => {
   const svg = $(fig, 'svg'), note = $(fig, '.sx-readout'), N = 4000, st = { bits: 2, step: 0 };
-  const r = rng2(11), gs = () => Math.sqrt(-2 * Math.log(r() + 1e-12)) * Math.cos(2 * Math.PI * r());
+  const r = rng(11), gs = () => gauss(r);
   const xs = Array.from({ length: N }, gs), BINS = 61, LO = -4, HI = 4, hist = new Array(BINS).fill(0);
   xs.forEach((x) => { const b = Math.floor((x - LO) / (HI - LO) * BINS); if (b >= 0 && b < BINS) hist[b]++; });
   let levels = [], errs = [], timer = 0;
