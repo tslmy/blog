@@ -5,7 +5,11 @@ description: Codebook quantization, step by step, with live figures.
 interactive: true
 ---
 
-Both models are mostly big matrices of weights, and each answer word means reading all of them once (§1: memory bandwidth). In 32-bit floats SmolLM2 alone is 538 MB, twice the iPod's RAM, so every weight has to shrink to a few bits. The trick Whistle uses, codebook quantization, is easiest to follow by starting with plain quantization and then adding four refinements. Each one fixes a problem the previous version runs into:
+Neural networks are mostly big tables of numbers, called weights. SmolLM2-135M, the small language model I put on a 2010 iPod touch, has 134.5 million of them. Stored as 32-bit floats they take 538 MB, twice the iPod's 256 MB of RAM, and every word of an answer means reading all of them once. To fit in memory, and to be read quickly, each weight has to shrink to a few bits.
+
+This article builds up one way to do that: *codebook quantization*, the scheme that the speech model [Whistle](https://huggingface.co/Cactus-Compute/whistle) ships in and that I used for SmolLM2. It is the technical core of [a longer story](https://tslmy.github.io/local-siri-on-ipod-touch-4/) about running Apple's own Siri interface on that iPod, but it stands on its own.
+
+We start with plain rounding and add four refinements, each fixing a problem the previous version runs into:
 
 | Stage | Idea | Problem it fixes |
 | --- | --- | --- |
@@ -14,6 +18,8 @@ Both models are mostly big matrices of weights, and each answer word means readi
 | 2. Rotation | Multiply each group by a Hadamard matrix | A spike still stretches the levels inside its own group |
 | 3. Codebook | Place the levels for a bell curve, not evenly | Rotated values are bell-shaped, so even levels waste precision |
 | 4. Kernel | Rotate the activations once, never rebuild the weights | Decoding 135 million weights per word is too slow |
+
+The figures are live: move the sliders, press the buttons, drag the 3D views. Collapsed "detours" hold side topics and the arithmetic, and margin notes point to published work (on a narrow screen, tap the number).
 
 The "bell curve" of stage 3 is the [normal (Gaussian) distribution](https://en.wikipedia.org/wiki/Normal_distribution): values pile up symmetrically around zero, most close to it and few far out.[^note-1]
 
@@ -740,3 +746,20 @@ One more refinement is for SmolLM2 only. It changes only which level each weight
 | 4-bit codebook, nearest level | 76 MB | 9.6 |
 | 4-bit codebook, GPTQ rounding | 76 MB | 8.1–8.9 |
 | 3-bit codebook | 59–66 MB | 29–81, unusable |
+
+## What it adds up to
+
+A weight now costs 4.5 bits instead of 32: a 4-bit index, plus a 32-bit scale shared by 64 weights. SmolLM2 shrank from 538 MB to 76 MB, and the codebook costs 64 bytes for the whole model. Each step earned its place:
+
+- **Groups** keep an outlier from spoiling a whole matrix. A group of 64 pays one scale for that.
+- **Rotation** spreads what is left of an outlier across its group, so one big weight no longer stretches the levels for the rest.
+- **The codebook** puts the levels where bell-shaped values actually are. All groups share it, which works only because each group is divided by its length first.
+- **The kernel** rotates the activations instead of the weights, so the stored form never has to be rebuilt.
+
+What the numbers do and do not show:
+
+- Everything here was measured on SmolLM2-135M, one small model. At 4 bits, rotation and the codebook gave modest gains on its weights, which were already close to a normal distribution. Smarter rounding mattered more: GPTQ brought perplexity from 9.6 down to 8.1–8.9, against 7.2 for the 32-bit floats. Whistle's weights were not analysed.
+- Only the weights are quantized. Activations and the attention cache, which larger models also need to shrink, are a separate problem, and one where outliers are usually worse.
+- The floor on bits depends on the model: at 3 bits, SmolLM2 was unusable.
+
+To go further, the margin notes link the papers behind each step. The reference implementation (`cq.py`) and the scripts behind the histograms are in [the project's repository](https://github.com/tslmy/local-siri-on-ipod-touch-4/tree/main/convert). [The story of getting these models to answer questions on the iPod](https://tslmy.github.io/local-siri-on-ipod-touch-4/) picks up where this article stops.
