@@ -95,7 +95,7 @@ description: Codebook quantization, step by step, with live figures.
 <p>Things to try in the figure:</p>
 <ul>
 <li>Click a point to see its grid.</li>
-<li>Drag the background to look around.</li>
+<li>Drag the background to look around, or switch on "spin the view" and move the slider while the points turn. It is much easier to see how they move in space.</li>
 <li>Turn the slider. At 60° the points are flattest, and at 120° they are spiky again.</li>
 <li>Flip the camera switch. Off, the camera stays with the axes and the points move. On, it stays with the points, and the axes and the cube turn the other way. It is the same picture seen from two places.</li>
 </ul>
@@ -107,6 +107,7 @@ description: Codebook quantization, step by step, with live figures.
     <button data-act="flat">60° (flattest)</button>
     <button data-act="reset">reset</button>
     <button data-act="follow" aria-pressed="false">camera follows the points</button>
+    <button data-act="spin" aria-pressed="false">spin the view</button>
   </div>
   <svg class="sx-r3" viewBox="0 0 640 330" role="img" aria-label="Four points in three dimensions with the cube of quantization levels around the selected point"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
@@ -185,7 +186,7 @@ description: Codebook quantization, step by step, with live figures.
 <ul>
 <li>Each dot is a group of three weights, red when its 2-bit rounding error is large and blue when it is small.</li>
 <li>There is no 3×3 Hadamard matrix (they exist for sizes 1, 2, 4, 8 and so on), so the flattening rotation is the 60° turn about the diagonal from the figure above, standing in for it.</li>
-<li>Choose a data set and a rotation, then drag the slider from 0 to 100% of that rotation.</li>
+<li>Choose a data set and a rotation, then drag the slider from 0 to 100% of that rotation. "Spin the view" turns the camera so you can see the cloud from all sides.</li>
 </ul>
 
 <figure class="widget wide" data-widget="pca3d">
@@ -195,6 +196,7 @@ description: Codebook quantization, step by step, with live figures.
     <span class="sx-seg"><button data-rot="pca" aria-pressed="true">PCA rotation</button><button data-rot="diag" aria-pressed="false">flattening rotation</button></span>
     <label>Rotate <input type="range" min="0" max="100" step="1" value="0" data-k="t"> <output data-o="t"></output></label>
     <button data-act="new">new data</button>
+    <button data-act="spin" aria-pressed="false">spin the view</button>
   </div>
   <svg class="sx-r3" viewBox="0 0 640 330" role="img" aria-label="A cloud of points in three dimensions that rotates by PCA or by a flattening rotation, coloured by rounding error"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
