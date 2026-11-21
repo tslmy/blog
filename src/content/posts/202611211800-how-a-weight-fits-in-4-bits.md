@@ -166,14 +166,14 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits">
-  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them. Each of the 16 grid points is a possible stored value: the label next to each arrow gives the group's stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a dot to select a group and make its square and arrow thicker.</figcaption>
+  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them. Each of the 16 grid points is a possible stored value. A hollow ring marks where a group is stored, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a dot to select a group and make its square and arrow thicker.</figcaption>
   <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels, the grid, and an arrow from each point to the grid point it is stored as"></svg>
 </figure>
 
 <p>Now rotate the groups. The curve shows, at every angle, the largest weight as a share of the group's length, averaged over the groups. Lower is flatter, and the rounding error follows it. The camera switch changes the viewpoint: off, the camera stays with the axes and the points move; on, it stays with the points, and the axes and squares turn the other way.</p>
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve">
-  <figcaption><strong>Rotating groups of two weights.</strong> Hollow dots mark where the groups started, and filled dots are where the rotation has taken them.</figcaption>
+  <figcaption><strong>Rotating groups of two weights.</strong> Dashed rings mark where the groups started, filled dots are where the rotation has taken them, and solid rings are where each group is stored.</figcaption>
   <div class="sx-rowlabel sx-block">Rotation</div>
   <div class="sx-controls">
     <label>Angle <input type="range" min="0" max="90" step="1" value="0" data-k="deg"> <output data-o="deg"></output></label>
