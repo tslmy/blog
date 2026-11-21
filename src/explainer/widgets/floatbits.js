@@ -1,6 +1,6 @@
 import { ranges, switches } from '../core/controls.js';
 import { $, el } from '../core/dom.js';
-import { mel, setMath } from '../core/math.js';
+import { mel, setDisplayMath } from '../core/math.js';
 import { fillTable } from '../core/table.js';
 
 // How a 32-bit float works: a sign bit, 8 exponent bits and 23 mantissa bits, value = ±(1 + mantissa) × 2^(exponent − 127).
@@ -10,10 +10,12 @@ const fmt = (v) => v.toLocaleString('en-US');
 
 const encode = (x) => { const d = new DataView(new ArrayBuffer(4)); d.setFloat32(0, x); const b = d.getUint32(0); return { s: b >>> 31, e: (b >>> 23) & 255, m: b & 0x7fffff }; };
 const decode = (s, e, m) => { const d = new DataView(new ArrayBuffer(4)); d.setUint32(0, ((s << 31) | (e << 23) | m) >>> 0); return d.getFloat32(0); };
+// a JavaScript number as TeX: 8.8e-39 becomes 8.8 \\times 10^{-39}
+const texNumber = (v) => String(v).replace(/e([+-]?\d+)/, (_, p) => ` \\times 10^{${+p}}`);
 const boxes = (str, cls) => { const row = el('div', 'sx-bitrow'); [...str].forEach((c) => row.append(el('span', 'b ' + cls, c))); return row; };
 
 export default (fig) => {
-  const tab = $(fig, '.sx-stat'), note = $(fig, '.sx-readout'), sign = $(fig, '[data-k=sign]');
+  const tab = $(fig, '.sx-stat'), formula = $(fig, '.sx-formula'), note = $(fig, '.sx-note'), sign = $(fig, '[data-k=sign]');
   let typed = null;                                           // the decimal the reader picked, until a slider moves
   const on = switches(fig, () => { typed = null; draw(); });
   const ctl = ranges(fig, () => { typed = null; draw(); }, { m: fmt });
@@ -31,8 +33,8 @@ export default (fig) => {
       ['Exponent', boxes(E.toString(2).padStart(8, '0'), 'e'), fmt(E), mel('span', null, sub ? `\\(0\\) is the special code for tiny numbers: no leading 1, and the power is fixed at \\(2^{-126}\\)` : `\\(${E} - ${BIAS} = ${power}\\), so the power of two is \\(2^{${power}} = ${Number((2 ** power).toPrecision(6))}\\)`)],
       ['Mantissa', boxes(M.toString(2).padStart(23, '0'), 'm'), fmt(M), mel('span', null, `\\(${fmt(M)} / 2^{23} = ${frac.toFixed(7)}\\), so the number before the power of two is \\(${lead} + ${frac.toFixed(7)} = ${(lead + frac).toFixed(7)}\\)`)],
     ], { rowHeaders: true });
-    setMath(note, `\\(${s ? '-' : ''}${(lead + frac).toFixed(7)} \\times 2^{${power}} = ${value}\\)`
-      + (typed !== null && value !== typed ? `. The decimal number ${typed} has no exact binary form, so the float holds the nearest one it can: ${value}.` : '.'));
+    setDisplayMath(formula, `${s ? '-' : ''}${(lead + frac).toFixed(7)} \\times 2^{${power}} = ${texNumber(value)}`);
+    note.textContent = typed !== null && value !== typed ? `The decimal number ${typed} has no exact binary form, so the float holds the nearest one it can.` : '';
   };
   fig.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => set(+b.dataset.preset)));
   set(0.137);

@@ -46,8 +46,9 @@ The question is where to put the levels. The most intuitive answer is to keep th
     <label>Exponent, as stored <input type="range" min="0" max="254" step="1" value="124" data-k="e"> <output data-o="e"></output></label>
     <label>Mantissa, as stored <input type="range" min="0" max="8388607" step="1" value="0" data-k="m"> <output data-o="m"></output></label>
   </div>
+  <div class="sx-formula" aria-live="polite"></div>
   <table class="sx-stat"></table>
-  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+  <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
 Now chop the exponent and the mantissa independently, and watch the levels move:
