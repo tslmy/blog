@@ -250,7 +250,7 @@ To visualize axes, let's consider the smallest case: groups of just 2 weights. B
   <figcaption><strong>Groups of two weights.</strong> Each group has a number and a color, so that you can follow it through the figures below.</figcaption>
   <div class="sx-rowlabel sx-block">Groups</div>
   <div class="sx-controls">
-    <label>Number of groups <input type="range" min="2" max="8" step="2" value="4" data-k="n"> <output data-o="n"></output></label>
+    <label>Number of groups <input type="range" min="2" max="8" step="2" value="8" data-k="n"> <output data-o="n"></output></label>
       </div>
   <p class="sx-hint">The first group is short, and one of its two weights is much bigger than the other. The last is long, and its two weights are equal. The groups in between change gradually from one to the other, and the number of groups goes up in twos. In the first half one weight dominates: those groups are spiky (triangles). In the second half the weights are alike: those groups are flat (circles).</p>
   <div class="sx-trip">
@@ -293,7 +293,7 @@ Now rotate the groups and watch what happens to each half:
 - The loss diagram under the plot shows how much each group loses at the current angle.
 - The camera switch changes the viewpoint. Off, the camera stays with the axes and the points move. On, it stays with the points, and the axes and squares turn the other way.
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points:off;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows:off">
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
   <figcaption><strong>Rotating groups of two weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored.</figcaption>
   <div class="sx-rowlabel sx-block">Rotation</div>
   <div class="sx-controls">

@@ -25,7 +25,7 @@ const groupsOf = (sc) => {
 export default (fig) => {
   let v = () => true;         // is this element of the plot switched on? set once the row of toggles exists
   const had = fig.hasAttribute('data-had'), layers = (fig.dataset.layers || 'points').split(/\s+/), has = (l) => layers.includes(l);
-  const sc = scenes[fig.dataset.scene || 'main'] || (scenes[fig.dataset.scene || 'main'] = { st: { n: 4, mode: 'plain' }, subs: [], groups: fig.dataset.groups || 'ramp' });
+  const sc = scenes[fig.dataset.scene || 'main'] || (scenes[fig.dataset.scene || 'main'] = { st: { n: +(document.querySelector(`figure[data-scene="${fig.dataset.scene || 'main'}"] [data-k=n]`)?.defaultValue ?? 4), mode: 'plain' }, subs: [], groups: fig.dataset.groups || 'ramp' });
   if (fig.dataset.levels) sc.st.mode = fig.dataset.levels;      // a figure can fix the levels option: "fixed" is step 3's one shared grid
   const rot = { deg: 0, sel: 0, follow: false };      // per figure: only the rotation figures turn the groups
   const anim = { a: 1, raf: 0 }, ease = (t) => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);     // how far a trail figure's groups have moved, 0 to 1
@@ -185,7 +185,7 @@ export default (fig) => {
   on('[data-act=replay]', 'click', play);
   on('[data-act=follow]', 'click', (e) => { rot.follow = !rot.follow; e.currentTarget.setAttribute('aria-pressed', String(rot.follow)); draw(); });
   if (svg) svg.addEventListener('click', (e) => { const i = e.target.dataset && e.target.dataset.i; if (i != null) { rot.sel = +i; draw(); } });
-  { const n = $(fig, '[data-o=n]'); if (n) n.textContent = sc.st.n; }
+  { const out = $(fig, '[data-o=n]'), slider = $(fig, '[data-k=n]'); if (out) out.textContent = sc.st.n; if (slider) slider.value = sc.st.n; }   // every figure of a scene shows the scene's number of groups
   if ($(fig, '[data-k=deg]')) set(0); else draw();
   if (has('trail') && svg && 'IntersectionObserver' in window) new IntersectionObserver((es, ob) => { if (es[0].isIntersecting) { ob.disconnect(); play(); } }, { threshold: .6 }).observe(svg);   // play once when the figure is first in view
 };
