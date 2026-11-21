@@ -98,6 +98,10 @@
 .sx-ol .odot { opacity: .65; }
 .sx-ol .lossdot { opacity: .95; }
 
+/* Chopping float bits (.sx-mf): the weights' histogram, and a tick for every level the format has */
+.sx-mf .bar { fill: var(--sx-blue); opacity: .5; }
+.sx-mf .lv { stroke: var(--sx-gold); stroke-width: 1; }
+
 /* Lloyd's algorithm (.sx-ll), the cost bars (.sx-sz, .sx-cost) and the operation counter */
 .sx-ll .bar { fill: var(--sx-blue); opacity: .5; }
 .sx-ll .lv { stroke: var(--sx-gold); stroke-width: 3; }

@@ -9,14 +9,14 @@ Neural networks are mostly big tables of numbers, called weights. SmolLM2-135M, 
 
 This article builds up one way to do that: *codebook quantization*, the scheme that the speech model [Whistle](https://huggingface.co/Cactus-Compute/whistle) ships in and that I used for SmolLM2. It is the technical core of [a longer story](https://tslmy.github.io/local-siri-on-ipod-touch-4/) about running Apple's own Siri interface on that iPod, but it stands on its own.
 
-We start with plain rounding and add four refinements, each fixing a problem the previous version runs into:
+We start with the basic idea, a set of levels that each weight rounds to, and how to place the levels. Then come four refinements, each fixing a problem the previous version runs into:
 
 | Stage | Idea | Problem it fixes |
 | --- | --- | --- |
-| Plain quantization | Round each weight to the nearest of a few evenly spaced levels | Starting point |
+| Levels | Round each weight to the nearest of a few levels, placed where the weights are (a codebook) | Float formats and evenly spaced levels follow a fixed rule, not the weights |
 | 1. Groups | Each group of 64 weights gets its own scale | One outlier stretches the levels for the whole matrix |
 | 2. Rotation | Multiply each group by a Hadamard matrix | A spike still stretches the levels inside its own group |
-| 3. Codebook | Place the levels for a bell curve, not evenly | Rotated values are bell-shaped, so even levels waste precision |
+| 3. One codebook | Divide each group by its length, so that one codebook made for a bell curve serves every group | A codebook for every group costs more to store than the weights |
 | 4. Kernel | Rotate the activations once, never rebuild the weights | Decoding 135 million weights per word is too slow |
 
 The figures are live: move the sliders, press the buttons, drag the 3D views. Collapsed "detours" hold side topics and the arithmetic, and margin notes point to published work (on a narrow screen, tap the number).
@@ -25,39 +25,97 @@ The "bell curve" of stage 3 is the [normal (Gaussian) distribution](https://en.w
 
 [^note-1]: A normal distribution is fixed by its centre, here 0, and its spread $\sigma$. About 68% of the values lie within one $\sigma$ of the centre and 99.7% within three, which is why a value beyond $3\sigma$ is rare (0.27%) in the histograms below.
 
-## Plain quantization
+## Where do the levels go?
 
-A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy instead:
+A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy: a small set of allowed values, called *levels*, and for each weight only the number of its nearest level, its *index*. With $2^b$ levels the index takes $b$ bits, so 16 levels take $b = 4$ bits, an eighth of the 32, and the model shrinks $32/4 = 8$ times. The price is the *rounding error*: the distance each weight moves to reach its nearest level.
 
-- **Levels.** Choose a small set of allowed values, called levels.
-- **Index.** For each weight, remember only which level is nearest. With $2^b$ levels the index takes $b$ bits, so 16 levels take $b = 4$ bits: an eighth of the 32, and the model shrinks $32/4 = 8$ times.
-- **Rounding error.** Every weight moves to its nearest level, and the distance it moves is its rounding error. That is the price: precision.
-- **Scale.** The simplest levels are spread evenly from $-m$ to $+m$, where $m$ is the largest weight in absolute value. With $2^b$ levels the gap between neighbours is $\mathrm{gap} = \dfrac{2m}{2^b - 1}$, and level number $k$, counting from 0, is $-m + k\cdot\mathrm{gap}$. That one number $m$ is stored alongside, so the levels can be turned back into real values.
+The question is where to put the levels. The most intuitive answer is to keep the float format and cut bits off it. A float is a sign, an exponent (the power of two) and a mantissa (the digits after the leading one). Chop the exponent and the mantissa independently, and watch the levels move:
 
-Slide the number of bits and watch the error. Then add an outlier:
+<figure class="widget wide" data-widget="minifloat">
+  <figcaption><strong>Chopping bits off a float.</strong> The blue bars are 3,000 weights, a bell curve with a typical size of 0.25. Every gold tick is a value that the float format can hold, and each weight rounds to the nearest one. The usual 32-bit float has 8 exponent bits and 23 mantissa bits.</figcaption>
+  <div class="sx-controls">
+    <label>Exponent bits <input type="range" min="1" max="5" step="1" value="3" data-k="e"> <output data-o="e"></output></label>
+    <label>Mantissa bits <input type="range" min="0" max="5" step="1" value="2" data-k="m"> <output data-o="m"></output></label>
+  </div>
+  <svg class="sx-mf" viewBox="0 0 640 170" role="img" aria-label="A histogram of weights with a tick for every value a small float format can hold"></svg>
+  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+</figure>
+
+Two things stand out:
+
+- **Each kind of bit does a different job.** Fewer mantissa bits thin the levels out inside every power of two. Fewer exponent bits shrink the range the levels cover, until the largest weights are clipped.
+- **The levels follow a fixed rule, not the weights.** Even with a good number of bits, many levels sit where almost no weight is: tiny values far below the typical weight, or large values beyond the largest. Evenly spaced levels, the other classic choice, make the opposite mistake: they spread out evenly while the weights crowd near zero.
+
+So weights cluster, and a fixed rule wastes levels on the places where they are not. The next intuitive step is to put the levels where the weights are, so that each level serves about the same number of weights. That is what Lloyd's algorithm does: send every weight to its nearest level, move each level to the average of the weights it got, and repeat. Try it on a lumpy cloud of values, and then on a bell curve:
+
+<figure class="widget wide" id="lloyd" data-widget="lloyd">
+  <figcaption><strong>Finding the levels with <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a>.</strong> The bars count 4,000 values. Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got.</figcaption>
+  <div class="sx-controls">
+    <span class="sx-seg" role="group" aria-label="Which values"><button data-dist="lumpy" aria-pressed="true">lumpy cloud</button><button data-dist="bell" aria-pressed="false">bell curve</button></span>
+    <label>Bits <input type="range" min="2" max="4" step="1" value="2" data-k="bits"> <output data-o="bits"></output></label>
+    <button data-act="next">next step</button>
+    <button data-act="run">run to the end</button>
+    <button data-act="reset">reset</button>
+  </div>
+  <svg class="sx-ll" viewBox="0 0 640 230" role="img" aria-label="A histogram of values with quantization levels that move toward where the values are, one step at a time"></svg>
+  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+</figure>
+
+The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16. The levels settle where the values crowd, and the error drops. A list of levels like this is called a *codebook*: to store a weight you keep the index of its entry, and to read it back you look the index up.[^scalar]
+
+[^scalar]: Here a codebook is a list of levels: 16 numbers, and each weight rounds to one of them independently of the others. That is scalar quantization, and so is every step of this article. The rotation in step 2 only changes the coordinates the rounding happens in. Vector quantizers instead replace a whole group of weights with one entry from a codebook of points; [QuIP#](https://arxiv.org/abs/2402.04396) is an example.
+
+<details class="detour">
+<summary>Detour: other ways to quantize</summary>
+
+Quantization methods differ on several independent axes, and this article covers one combination of them. In short:
+
+| Axis | Options | What this article does |
+| --- | --- | --- |
+| What is stored per number | A low-precision float (fp16, bf16, fp8, FP4), or a small integer index | An index, into a codebook |
+| Level spacing | Evenly spaced, geometric (floats), or fitted to the weights (Lloyd–Max, NF4) | Evenly spaced at first, then fitted |
+| Scalar or vector | One number at a time, or a whole group per codebook entry | Scalar |
+| Scale | One per tensor, per row, or per group | One per group of 64 |
+| Preprocessing | None, or a rotation (QuIP#, QuaRot) | A Hadamard rotation |
+| What is quantized | Weights only, or activations and the attention cache too | Weights only |
+| When | After training (post-training), or during it (quantization-aware training) | After training, with GPTQ rounding for SmolLM2 |
+
+Where to read more:
+
+- [A Survey of Quantization Methods for Efficient Neural Network Inference](https://arxiv.org/abs/2103.13630) (Gholami et al., 2021) is the standard overview of the axes above.
+- [A Visual Guide to Quantization](https://maartengrootendorst.com/blog/quantization/) (Maarten Grootendorst, 2024) is a picture-led tour from float formats through integer schemes to outliers.
+- [FP8 Formats for Deep Learning](https://arxiv.org/abs/2209.05433) (Micikevicius et al., 2022) and [Microscaling Data Formats for Deep Learning](https://arxiv.org/abs/2310.10537) (Rouhani et al., 2023) describe the float-with-fewer-bits side, including formats that share one scale across a block of 32 numbers, which is group-wise scaling again.
+- The [Transformers quantization guide](https://huggingface.co/docs/transformers/quantization/concept_guide) explains post-training against quantization-aware training and which libraries do what.
+- The margin notes later in this article point to the papers behind rotation, fitted levels and GPTQ.
+
+</details>
+
+## The trouble with outliers
+
+Now that the levels fit the weights, real weight matrices bring a complication. Most weights are small, yet a few are much larger. These *outliers* are what [much of the quantization literature](https://arxiv.org/abs/2404.00456) is about. Try them: add an outlier to 40 weights, and compare levels spread evenly from the smallest weight to the largest with levels fitted by Lloyd's algorithm:
 
 <figure class="widget wide" data-widget="quantize">
-  <figcaption><strong>Rounding 40 weights to a few levels.</strong> Dots are the weights, ticks are the levels, and each line shows where a weight rounds to. More bits mean more levels and a smaller error, but a bigger model. Click a dot to see the actual bits of that weight, before and after.</figcaption>
+  <figcaption><strong>Rounding 40 weights to a few levels.</strong> Dots are the weights, ticks are the levels, and each line shows where a weight rounds to. The levels are either fitted to the weights with Lloyd's algorithm or spread evenly from the smallest weight to the largest. More bits mean more levels and a smaller error, but a bigger model. Click a dot to see the actual bits of that weight, before and after.</figcaption>
   <div class="sx-controls">
     <label>Bits per weight <input type="range" min="1" max="6" step="1" value="3" data-k="bits"> <output data-o="bits"></output></label>
+    <button data-k="fitted" aria-pressed="true">levels fitted to the weights</button>
     <button data-k="outlier" aria-pressed="false">add an outlier</button>
     <button data-act="new">new weights</button>
   </div>
-  <svg class="sx-cq" viewBox="0 0 640 182" role="img" aria-label="Weights placed on a value ruler, with evenly spaced quantization levels below, each labelled with its level number"></svg>
+  <svg class="sx-cq" viewBox="0 0 640 182" role="img" aria-label="Weights placed on a value ruler, with quantization levels below, each labelled with its level number"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
   <div class="sx-bits"></div>
 </figure>
 
-Adding bits helps, but there is a worse problem: the "outliers" that [much of the quantization literature](https://arxiv.org/abs/2404.00456) is about.
+- **Evenly spaced levels suffer.** They must reach the largest weight, so one outlier stretches them far apart, and the ordinary weights near zero round to just the few levels there. Their error jumps although almost no weight changed.
+- **Fitted levels cope much better, but not for free.** The outlier takes a level or two of its own, out in the tail, which leaves fewer for the ordinary weights. With 2 bits there are only 4 levels to begin with, so this hurts most there.
+- **Either way, one set of levels for a whole matrix is the weak point.** A few outliers anywhere among millions of weights steer all of the levels.
 
-- Most weights are small, yet a few are much larger.
-- The levels must reach the largest weight, so one outlier stretches them far apart, and the ordinary weights near zero round to just the few levels there.
-- The error jumps even though almost no weight changed.
-- With 2 bits there are only 4 levels to begin with, so this hurts most there.
-
-A single scale for everything is the weak point.
+The next step limits the damage.
 
 ## Step 1: cut each row into groups
+
+From here to step 3, the figures use the simplest levels: evenly spaced from $-m$ to $+m$, where $m$ is the largest weight in absolute value (the "scale"). With $2^b$ levels the gap between neighbours is $\mathrm{gap} = \dfrac{2m}{2^b - 1}$, and level number $k$, counting from 0, is $-m + k\cdot\mathrm{gap}$. That one number $m$ is stored alongside, so the levels can be turned back into real values. Evenly spaced levels make the effect of groups and rotation easiest to see; step 3 brings the fitted levels back.
 
 - A weight matrix has millions of numbers, and one outlier anywhere would stretch the levels for all of them.
 - So each row is split, from left to right, into groups of 64 consecutive weights (128 in Whistle), and each group gets its own scale. A group never spans rows. An outlier now only spoils its own group.[^note-2]
@@ -484,15 +542,13 @@ Here is <a class="xref" href="#why-grouped">the toy matrix from step 1</a> again
 
 So the rotation is settled: one Hadamard matrix, applied to every group. Next come the levels.
 
-## Step 3: snap to a codebook made for bell curves
+## Step 3: one codebook for every group
 
 ### Per-group codebooks are expensive to store
 
-Before the codebook[^scalar], a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.
+The fitted levels from the start of this article come with a cost that we have not counted yet: the codebook has to be stored too. Evenly spaced levels are free in that respect, since the scale alone fixes all of them. Fitted levels are not, because every level is a number. And each group of weights has its own values, so each group would get its own codebook. Let us see what that costs.
 
-Take a group of 64 weights, which is the group size I used for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits *this* group best, which is not evenly spaced.
-
-[^scalar]: Here a codebook is a list of levels: 16 numbers, and each weight rounds to one of them independently of the others. That is scalar quantization, and so is every step of this article. The rotation in step 2 only changes the coordinates the rounding happens in. Vector quantizers instead replace a whole group with one entry from a codebook of points; [QuIP#](https://arxiv.org/abs/2402.04396) is an example.
+Take a group of 64 weights, which is the group size I used for SmolLM2 (Whistle uses 128). Its 64 weights hardly spread evenly: most sit near zero and a few lie far out. So we want the fitted levels for *this* group, which are not evenly spaced.
 
 To see such a set, pick two of the 64 weights at random, say the 21st and the 58th, and plot them as one point. The levels of the group, applied to both axes, make a grid around it. Then take the weights at the same two positions in another group: a different point, and a different set of levels, because the other group has its own weights. Add groups and levels below and watch the table:
 
@@ -607,19 +663,7 @@ Putting it together, the step does this:
 
 [^note-7]: Levels built for normally distributed weights are not unique to Whistle's scheme. The NF4 data type in [QLoRA](https://arxiv.org/abs/2305.14314) (Dettmers et al., 2023) is designed for zero-centred normal data too, but places its levels at quantiles of the normal distribution, so that each level serves the same expected number of values, rather than with Lloyd's algorithm.
 
-To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced. The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16:
-
-<figure class="widget wide" data-widget="lloyd">
-  <figcaption><strong>Finding the levels with Lloyd's algorithm.</strong> Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got.</figcaption>
-  <div class="sx-controls">
-    <label>Bits <input type="range" min="2" max="4" step="1" value="2" data-k="bits"> <output data-o="bits"></output></label>
-    <button data-act="next">next step</button>
-    <button data-act="run">run to the end</button>
-    <button data-act="reset">reset</button>
-  </div>
-  <svg class="sx-ll" viewBox="0 0 640 230" role="img" aria-label="A bell curve of values with quantization levels that move toward where the values are, one step at a time"></svg>
-  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
-</figure>
+The levels come from Lloyd's algorithm, exactly as in <a class="xref" href="#lloyd">the figure near the start</a>, only run on a bell curve instead of a lumpy cloud: switch that figure to "bell curve" and step through it to see where the levels settle.
 
 Now the same idea on the two-weight groups from step 2. The length of each group is divided out, so the dots sit on a circle of length 1, and one grid is shared by every group:
 

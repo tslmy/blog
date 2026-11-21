@@ -17,6 +17,7 @@ const widgets = {
   hadamard: () => import('./widgets/hadamard.js'),
   hist: () => import('./widgets/hist.js'),
   lloyd: () => import('./widgets/lloyd.js'),
+  minifloat: () => import('./widgets/minifloat.js'),
   outlierloss: () => import('./widgets/outlierloss.js'),
   pca: () => import('./widgets/pca.js'),
   pca3d: () => import('./widgets/pca3d.js'),

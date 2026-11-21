@@ -2,8 +2,9 @@ import { $, el, sv, svgText } from '../core/dom.js';
 import { mel, setMath } from '../core/math.js';
 import { ranges, reseedable, switches } from '../core/controls.js';
 import { gauss, rng } from '../core/random.js';
+import { evenLevels, fitLevels, nearestIndex } from '../core/quantizer.js';
 
-// 0. Plain quantization: fewer bits, coarser rounding, what an outlier does to it, and the bits themselves
+// Quantizing 40 weights: fewer bits, coarser rounding, evenly spaced or fitted levels, what an outlier does to either, and the bits themselves.
 export default (fig) => {
   const N = 40, SIGMA = 0.05, RANGE = 0.5, state = { sel: 3 };
   const ctl = ranges(fig, () => draw()), on = switches(fig, () => draw()), seed = reseedable(fig, 5, () => draw());
@@ -14,7 +15,8 @@ export default (fig) => {
     const r = rng(seed()), g = () => gauss(r);
     const w = Array.from({ length: N }, () => g() * SIGMA); if (on.outlier) w[Math.floor(r() * N)] = 9 * SIGMA * (r() < .5 ? -1 : 1);
     const m = Math.max(...w.map(Math.abs)), n = 2 ** ctl.bits, step = 2 * m / (n - 1);
-    const idxOf = (x) => Math.round((x + m) / step), levels = Array.from({ length: n }, (_, k) => -m + k * step), nearest = (x) => -m + idxOf(x) * step;
+    const levels = on.fitted ? fitLevels(w, n) : evenLevels(-m, m, n), idxOf = (x) => nearestIndex(levels, x), nearest = (x) => levels[idxOf(x)];
+    const gaps = levels.slice(1).map((l, k) => l - levels[k]);
     const X = (x) => 20 + ((x + RANGE) / (2 * RANGE)) * 600, big = w.findIndex((x) => Math.abs(x) === m);
     const kids = [sv('line', { x1: 20, x2: 620, y1: 128, y2: 128, class: 'ax' })];
     levels.forEach((l) => kids.push(sv('line', { x1: X(l), x2: X(l), y1: 120, y2: 136, class: 'level' })));
@@ -24,7 +26,7 @@ export default (fig) => {
       kids.push(sv('circle', { cx: X(x), cy: y, r: 4, class: (on.outlier && i === big ? 'dot out' : 'dot') + (i === state.sel ? ' sel' : ''), 'data-i': i }));
     });
     // level numbers under the ticks: decimal, and binary when it fits (staggered over two rows)
-    const gap = X(step) - X(0), selK = idxOf(w[state.sel]);
+    const gap = X(Math.min(...gaps)) - X(0), selK = idxOf(w[state.sel]);
     let stride = 1; while (gap * stride < 15 && stride < n) stride *= 2;
     const showBin = gap * stride * 2 >= ctl.bits * 6.2 + 4;
     levels.forEach((l, k) => {
@@ -41,16 +43,23 @@ export default (fig) => {
       if (major) kids.push(svgText(X(v), 11, String(Number(v.toFixed(2))), 'middle', 'lbl'));
     }
     svg.replaceChildren(...kids);
+    const relativeError = (vals, lv) => Math.sqrt(vals.reduce((a, x) => a + (x - lv[nearestIndex(lv, x)]) ** 2, 0) / vals.reduce((a, x) => a + x * x, 0));
     const e2 = w.reduce((a, x) => a + (x - nearest(x)) ** 2, 0), p2 = w.reduce((a, x) => a + x * x, 0);
-    setMath(note, `${ctl.bits} bit${ctl.bits > 1 ? 's' : ''} give \\(2^{${ctl.bits}} = ${n}\\) levels, ${Number((32 / ctl.bits).toFixed(1))}× smaller than 32-bit floats. Rounding error: ${(Math.sqrt(e2 / p2) * 100).toFixed(0)}% of the weights' own size. Gap between neighbouring levels: ${step.toFixed(3)}.`);
+    const ordinary = w.filter((x, i) => !(on.outlier && i === big)), plain = relativeError(ordinary, levels);
+    setMath(note, `${ctl.bits} bit${ctl.bits > 1 ? 's' : ''} give \\(2^{${ctl.bits}} = ${n}\\) levels, ${Number((32 / ctl.bits).toFixed(1))}× smaller than 32-bit floats. Rounding error: ${(Math.sqrt(e2 / p2) * 100).toFixed(0)}% of the weights' own size`
+      + (on.outlier ? `, and ${(plain * 100).toFixed(0)}% for the ordinary weights alone` : '') + `. ${on.fitted ? `Gaps between neighbouring levels: ${Math.min(...gaps).toFixed(3)} to ${Math.max(...gaps).toFixed(3)}.` : `Gap between neighbouring levels: ${step.toFixed(3)}.`}`);
     const x = w[state.sel], k = idxOf(x), bits = f32(x);
     panel.replaceChildren(
       el('p', null, `Selected weight: ${x.toFixed(4)}. As a 32-bit float it is these bits (sign, exponent, mantissa):`),
       boxes(bits, (i) => (i === 0 ? 's' : i < 9 ? 'e' : 'm')),
       el('p', null, `Quantized, it is only the number of its nearest level, counting from the left (0 to ${n - 1}). That is ${k}, written in ${ctl.bits} bit${ctl.bits > 1 ? 's' : ''}:`),
       boxes(k.toString(2).padStart(ctl.bits, '0'), 'i'),
-      mel('p', null, `To read it back: \\(\\mathrm{level} = -m + \\mathrm{index}\\times\\mathrm{gap} = -${m.toFixed(4)} + ${k}\\times ${step.toFixed(4)} = ${nearest(x).toFixed(4)}\\). The weight was ${x.toFixed(4)}, so the error is ${Math.abs(x - nearest(x)).toFixed(4)}.`),
-      mel('p', null, `All ${N} weights as 32-bit floats: \\(${N}\\times 32 = ${N * 32}\\) bits. Quantized: \\(${N}\\times ${ctl.bits} = ${N * ctl.bits}\\) bits for the indices, plus \\(m = ${m.toFixed(4)}\\) stored once as a 32-bit float, so \\(${N * ctl.bits} + 32 = ${N * ctl.bits + 32}\\) bits in all.`));
+      on.fitted
+        ? mel('p', null, `To read it back, look the index up in the codebook, the list of the ${n} levels: level ${k} is ${nearest(x).toFixed(4)}. The weight was ${x.toFixed(4)}, so the error is ${Math.abs(x - nearest(x)).toFixed(4)}.`)
+        : mel('p', null, `To read it back: \\(\\mathrm{level} = -m + \\mathrm{index}\\times\\mathrm{gap} = -${m.toFixed(4)} + ${k}\\times ${step.toFixed(4)} = ${nearest(x).toFixed(4)}\\). The weight was ${x.toFixed(4)}, so the error is ${Math.abs(x - nearest(x)).toFixed(4)}.`),
+      on.fitted
+        ? mel('p', null, `All ${N} weights as 32-bit floats: \\(${N}\\times 32 = ${N * 32}\\) bits. Quantized: \\(${N}\\times ${ctl.bits} = ${N * ctl.bits}\\) bits for the indices, plus the codebook of \\(${n}\\) levels as 32-bit floats, \\(${n}\\times 32 = ${n * 32}\\) bits, so \\(${N * ctl.bits + n * 32}\\) bits in all.`)
+        : mel('p', null, `All ${N} weights as 32-bit floats: \\(${N}\\times 32 = ${N * 32}\\) bits. Quantized: \\(${N}\\times ${ctl.bits} = ${N * ctl.bits}\\) bits for the indices, plus \\(m = ${m.toFixed(4)}\\) stored once as a 32-bit float, so \\(${N * ctl.bits + 32}\\) bits in all.`));
   };
   svg.addEventListener('click', (e) => { const i = e.target.dataset && e.target.dataset.i; if (i != null) { state.sel = +i; draw(); } });
   draw();
