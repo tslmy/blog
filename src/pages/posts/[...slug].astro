@@ -17,7 +17,7 @@ const { Content } = await render(post);
   <article>
     <h1>{post.data.title}</h1>
     <time>{post.data.date.toISOString().slice(0, 10)}</time>
-    <div class:list={['prose', post.data.interactive && 'siri-explainer']}><Content components={{ Chart }} /></div>
+    <div class:list={['prose', post.data.interactive && 'explainer']}><Content components={{ Chart }} /></div>
   {post.data.interactive && <Explainer />}
   </article>
   <Minimap />
