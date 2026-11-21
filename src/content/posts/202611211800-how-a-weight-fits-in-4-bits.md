@@ -195,7 +195,7 @@ Here are the entries of these matrices, before the scaling:</p>
 
 <figure class="widget wide" data-widget="hadamard">
   <figcaption><strong>Building a Walsh–Hadamard matrix by doubling.</strong> Blue is +1, red is −1. Pick a size, then click a row to see what it computes.</figcaption>
-  <div class="sx-controls"><span class="sx-seg"><button data-n="2">2×2</button><button data-n="4">4×4</button><button data-n="8">8×8</button><button data-n="16" aria-pressed="true">16×16</button></span></div>
+  <div class="sx-controls"><span class="sx-seg"><button data-n="2" aria-pressed="false">2×2</button><button data-n="4" aria-pressed="false">4×4</button><button data-n="8" aria-pressed="false">8×8</button><button data-n="16" aria-pressed="true">16×16</button></span></div>
   <div class="sx-had"></div>
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
