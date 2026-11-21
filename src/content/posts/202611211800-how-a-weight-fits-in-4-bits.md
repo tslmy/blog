@@ -470,6 +470,16 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 
 <p>The arithmetic is short. Take groups of \(G\) weights, \(b\)-bit indices, and \(c\)-bit numbers (\(c = 32\) here). Anything stored once for the whole model is negligible, so what counts is what is stored for every group:</p>
 \[ \begin{aligned} \text{shared codebook:}\quad & b + \frac{c}{G} \\ \text{fresh codebook per group:}\quad & b + \frac{2^b\,c}{G} \end{aligned} \]
+
+<figure class="widget wide" data-widget="codebooks">
+  <figcaption><strong>What is stored for each group.</strong> Four groups of each scheme, with every bar as long as the bits it takes. Make the groups larger and the fresh codebook's share shrinks, as the formula says.</figcaption>
+  <div class="sx-controls">
+    <label>Weights per group <input type="range" min="0" max="4" step="1" value="2" data-k="g"> <output data-o="g"></output></label>
+  </div>
+  <svg class="sx-sz" viewBox="0 0 640 210" role="img" aria-label="Rows of groups showing the bits stored for each: indices and a scale with one shared codebook, and indices and a codebook with a fresh codebook per group"></svg>
+  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+</figure>
+
 <ul>
 <li>The shared scheme pays for one scale per group. The fresh scheme pays for \(2^b\) levels per group instead, which is \(2^b\) times as much: with \(b = 4\), sixteen times.</li>
 <li>The fresh codebook's cost per weight equals the indices' own \(b\) bits when \(G = 2^b c / b\), which is 128 for \(b = 4\). Below that size, the codebooks outweigh the data they describe.</li>
