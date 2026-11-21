@@ -32,7 +32,12 @@ A weight is a number such as 0.137, and a float stores it in 32 bits. Quantizati
 The question is where to put the levels. The most intuitive answer is to keep the float format and cut bits off it. A float is scientific notation in binary: a sign, an exponent (the power of two) and a mantissa (the digits after the leading one). Here is how the bits of a 32-bit float spell a number:
 
 <figure class="widget wide sx-fb" data-widget="floatbits">
-  <figcaption><strong>How a float spells a number.</strong> A 32-bit float is scientific notation in binary: a sign, an exponent and a mantissa. Its value is ±(1 + mantissa) × 2<sup>exponent</sup>, where the exponent is stored with 127 added to it. Pick a number to see its bits, or move the sliders to set the stored exponent and mantissa yourself.</figcaption>
+  <figcaption><strong>How a float spells a number.</strong> A float is scientific notation in binary: a sign, an exponent and a mantissa. Its value is ±(1 + mantissa) × 2<sup>exponent</sup>, where the exponent is stored with a fixed number added to it. A 32-bit float gives the exponent 8 bits and the mantissa 23. Change how many bits each gets, pick a number to see its bits, or move the sliders for the stored values.</figcaption>
+  <div class="sx-controls">
+    <span class="sx-rowlabel">Bits</span>
+    <label>Exponent <input type="range" min="2" max="8" step="1" value="8" data-k="eb"> <output data-o="eb"></output></label>
+    <label>Mantissa <input type="range" min="0" max="23" step="1" value="23" data-k="mb"> <output data-o="mb"></output></label>
+  </div>
   <div class="sx-controls">
     <span class="sx-rowlabel">Try</span>
     <button data-preset="0.137">0.137</button>
@@ -42,9 +47,10 @@ The question is where to put the levels. The most intuitive answer is to keep th
     <button data-preset="1">1</button>
   </div>
   <div class="sx-controls">
+    <span class="sx-rowlabel">Stored</span>
     <button data-k="sign" aria-pressed="false">negative</button>
-    <label>Exponent, as stored <input type="range" min="0" max="254" step="1" value="124" data-k="e"> <output data-o="e"></output></label>
-    <label>Mantissa, as stored <input type="range" min="0" max="8388607" step="1" value="0" data-k="m"> <output data-o="m"></output></label>
+    <label>Exponent <input type="range" min="0" max="254" step="1" value="124" data-k="e"> <output data-o="e"></output></label>
+    <label>Mantissa <input type="range" min="0" max="8388607" step="1" value="0" data-k="m"> <output data-o="m"></output></label>
   </div>
   <div class="sx-formula" aria-live="polite"></div>
   <table class="sx-stat"></table>
