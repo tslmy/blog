@@ -159,7 +159,10 @@ description: Codebook quantization, step by step, with live figures.
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p><strong>Why not PCA?</strong> If you have met <a href="https://en.wikipedia.org/wiki/Principal_component_analysis">principal component analysis</a>, this rotation may look familiar. PCA is also a rotation, but with the opposite goal:</p>
+<details class="detour">
+<summary>Detour: how is this different from PCA?</summary>
+
+<p>If you have met <a href="https://en.wikipedia.org/wiki/Principal_component_analysis">principal component analysis</a>, this rotation may look familiar. PCA is also a rotation, but with the opposite goal:</p>
 <div class="wide"><table>
 <thead><tr><th></th><th>PCA</th><th>Hadamard (here)</th></tr></thead>
 <tbody>
@@ -203,6 +206,8 @@ description: Codebook quantization, step by step, with live figures.
 </figure>
 
 <p>Neither rotation is better in general; they are tools for different jobs. When the data has no preferred direction (the first data set), PCA's axes are close to arbitrary, so a PCA rotation can help or hurt by chance. When the weights move together (the second), PCA is exactly the wrong tool for rounding: it makes every group spikier.</p>
+
+</details>
 
 <p><strong>Step 3: snap to a codebook made for bell curves.</strong></p>
 <ul>
