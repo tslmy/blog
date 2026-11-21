@@ -13,7 +13,7 @@ description: Codebook quantization, step by step, with live figures.
 <p>Slide the number of bits and watch the error. Then add an outlier:</p>
 
 <figure class="widget wide" data-widget="quantize">
-  <figcaption><strong>Rounding 40 weights to a few levels.</strong> Dots are the weights, ticks are the levels, and each line shows where a weight rounds to. More bits mean more levels and a smaller error, but a bigger model.</figcaption>
+  <figcaption><strong>Rounding 40 weights to a few levels.</strong> Dots are the weights, ticks are the levels, and each line shows where a weight rounds to. More bits mean more levels and a smaller error, but a bigger model. Click a dot to see the actual bits of that weight, before and after.</figcaption>
   <div class="sx-controls">
     <label>Bits per weight <input type="range" min="1" max="6" step="1" value="3" data-k="bits"> <output data-o="bits"></output></label>
     <button data-k="outlier" aria-pressed="false">add an outlier</button>
@@ -21,6 +21,7 @@ description: Codebook quantization, step by step, with live figures.
   </div>
   <svg class="sx-cq" viewBox="0 0 640 150" role="img" aria-label="Weights and evenly spaced quantization levels on a number line"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+  <div class="sx-bits"></div>
 </figure>
 
 <p>Adding bits helps, but there is a worse problem. Most weights are small, yet a few are much larger: the "outliers" that <a href="https://arxiv.org/abs/2404.00456">much of the quantization literature</a> is about. Because the levels must reach the largest weight, one outlier stretches them so far apart that the ordinary weights, which all sit near zero, round to the few levels there. The error jumps even though almost no weight changed. With 2 bits there are only 4 levels to begin with, so this hurts most there. A single scale for everything is the weak point.</p>
