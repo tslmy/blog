@@ -1,19 +1,12 @@
 import { hAxis } from '../core/axis.js';
 import { choice, ranges } from '../core/controls.js';
 import { $, sv, svgText } from '../core/dom.js';
-import { gauss, rng } from '../core/random.js';
+import { sample } from '../core/distributions.js';
 import { evenLevels, lloydStep } from '../core/quantizer.js';
 
 // Lloyd's algorithm, step by step: the levels start evenly spaced and move to where the values are.
 // The values are either a lumpy cloud (three clusters) or a bell curve.
 const N = 4000, BINS = 61, LO = -4, HI = 4;
-
-const sample = (dist) => {
-  const r = rng(11);
-  if (dist === 'bell') return Array.from({ length: N }, () => gauss(r));
-  const clusters = [[.45, -1.6, .35], [.35, .4, .25], [.2, 1.9, .5]];       // share, centre, spread
-  return Array.from({ length: N }, () => { let u = r(), c = clusters[0]; for (const k of clusters) { if (u < k[0]) { c = k; break; } u -= k[0]; } return c[1] + c[2] * gauss(r); });
-};
 
 export default (fig) => {
   const svg = $(fig, 'svg'), note = $(fig, '.sx-readout'), st = { step: 0 };
@@ -22,7 +15,7 @@ export default (fig) => {
   const mse = (lv) => xs.reduce((a, x) => { let m = 1e9; for (const l of lv) m = Math.min(m, (x - l) ** 2); return a + m; }, 0) / N;
   const init = () => {
     clearInterval(timer);
-    xs = sample(dist.value); hist = new Array(BINS).fill(0); top = 1;
+    xs = sample(dist.value, N); hist = new Array(BINS).fill(0); top = 1;
     xs.forEach((x) => { const b = Math.floor((x - LO) / (HI - LO) * BINS); if (b >= 0 && b < BINS) hist[b]++; });
     top = Math.max(...hist);
     levels = evenLevels(-3, 3, 2 ** ctl.bits); errs = [mse(levels)]; st.step = 0; draw();

@@ -60,8 +60,9 @@ The question is where to put the levels. The most intuitive answer is to keep th
 Now chop the exponent and the mantissa independently, and watch the levels move:
 
 <figure class="widget wide" data-widget="minifloat">
-  <figcaption><strong>Chopping bits off a float.</strong> The blue bars are 3,000 weights, a bell curve with a typical size of 0.25. Every gold tick is a value that the float format can hold, and each weight rounds to the nearest one. The usual 32-bit float has 8 exponent bits and 23 mantissa bits.</figcaption>
+  <figcaption><strong>Chopping bits off a float.</strong> The blue bars are 3,000 weights. Every gold tick is a value that the float format can hold, and each weight rounds to the nearest one. The usual 32-bit float has 8 exponent bits and 23 mantissa bits.</figcaption>
   <div class="sx-controls">
+    <span class="sx-seg" role="group" aria-label="Which weights"><button data-dist="bell" aria-pressed="true">bell curve</button><button data-dist="lumpy" aria-pressed="false">lumpy cloud</button></span>
     <label>Exponent bits <input type="range" min="1" max="5" step="1" value="3" data-k="e"> <output data-o="e"></output></label>
     <label>Mantissa bits <input type="range" min="0" max="5" step="1" value="2" data-k="m"> <output data-o="m"></output></label>
   </div>
@@ -72,7 +73,7 @@ Now chop the exponent and the mantissa independently, and watch the levels move:
 Two things stand out:
 
 - **Each kind of bit does a different job.** Fewer mantissa bits thin the levels out inside every power of two. Fewer exponent bits shrink the range the levels cover, until the largest weights are clipped.
-- **The levels follow a fixed rule, not the weights.** Even with a good number of bits, many levels sit where almost no weight is: tiny values far below the typical weight, or large values beyond the largest. Evenly spaced levels, the other classic choice, make the opposite mistake: they spread out evenly while the weights crowd near zero.
+- **The levels follow a fixed rule, not the weights.** Even with a good number of bits, many levels sit where almost no weight is: tiny values far below the typical weight, or large values beyond the largest. Evenly spaced levels, the other classic choice, make the opposite mistake: they spread out evenly while the weights crowd together in a few places.
 
 So weights cluster, and a fixed rule wastes levels on the places where they are not. The next intuitive step is to put the levels where the weights are, so that each level serves about the same number of weights. That is what Lloyd's algorithm does: send every weight to its nearest level, move each level to the average of the weights it got, and repeat. Try it on a lumpy cloud of values, and then on a bell curve:
 
