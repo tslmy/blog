@@ -29,7 +29,28 @@ The "bell curve" of stage 3 is the [normal (Gaussian) distribution](https://en.w
 
 A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy: a small set of allowed values, called *levels*, and for each weight only the number of its nearest level, its *index*. With $2^b$ levels the index takes $b$ bits, so 16 levels take $b = 4$ bits, an eighth of the 32, and the model shrinks $32/4 = 8$ times. The price is the *rounding error*: the distance each weight moves to reach its nearest level.
 
-The question is where to put the levels. The most intuitive answer is to keep the float format and cut bits off it. A float is a sign, an exponent (the power of two) and a mantissa (the digits after the leading one). Chop the exponent and the mantissa independently, and watch the levels move:
+The question is where to put the levels. The most intuitive answer is to keep the float format and cut bits off it. A float is scientific notation in binary: a sign, an exponent (the power of two) and a mantissa (the digits after the leading one). Here is how the bits of a 32-bit float spell a number:
+
+<figure class="widget wide sx-fb" data-widget="floatbits">
+  <figcaption><strong>How a float spells a number.</strong> A 32-bit float is scientific notation in binary: a sign, an exponent and a mantissa. Its value is ±(1 + mantissa) × 2<sup>exponent</sup>, where the exponent is stored with 127 added to it. Pick a number to see its bits, or move the sliders to set the stored exponent and mantissa yourself.</figcaption>
+  <div class="sx-controls">
+    <span class="sx-rowlabel">Try</span>
+    <button data-preset="0.137">0.137</button>
+    <button data-preset="-3.5">−3.5</button>
+    <button data-preset="12">12</button>
+    <button data-preset="0.0004">0.0004</button>
+    <button data-preset="1">1</button>
+  </div>
+  <div class="sx-controls">
+    <button data-k="sign" aria-pressed="false">negative</button>
+    <label>Exponent, as stored <input type="range" min="0" max="254" step="1" value="124" data-k="e"> <output data-o="e"></output></label>
+    <label>Mantissa, as stored <input type="range" min="0" max="8388607" step="1" value="0" data-k="m"> <output data-o="m"></output></label>
+  </div>
+  <table class="sx-stat"></table>
+  <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+</figure>
+
+Now chop the exponent and the mantissa independently, and watch the levels move:
 
 <figure class="widget wide" data-widget="minifloat">
   <figcaption><strong>Chopping bits off a float.</strong> The blue bars are 3,000 weights, a bell curve with a typical size of 0.25. Every gold tick is a value that the float format can hold, and each weight rounds to the nearest one. The usual 32-bit float has 8 exponent bits and 23 mantissa bits.</figcaption>

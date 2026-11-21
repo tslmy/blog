@@ -29,6 +29,11 @@
 .sx-bitrow .b.e { background: var(--sx-gold); color: #000; }
 .sx-bitrow .b.i { background: var(--sx-blue); color: #fff; width: 1.4rem; }
 
+/* How a float works (.sx-fb): the sign, exponent and mantissa bit boxes in the table */
+.sx-fb .sx-bitrow { flex-wrap: nowrap; }
+.sx-fb .sx-stat :is(td, th).num { text-align: left; font-weight: normal; }
+.sx-fb .sx-stat thead th, .sx-fb .sx-stat tr:first-child th { font-weight: bold; }
+
 /* The Walsh–Hadamard matrix by doubling (.sx-had) and the fast transform (.sx-fwht) */
 .sx-had .grid { display: grid; gap: 2px; max-width: 26rem; margin: .3rem auto; }
 .sx-had .grid div { aspect-ratio: 1; border-radius: 2px; font: .75rem/1 var(--sx-mono); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity .2s; }

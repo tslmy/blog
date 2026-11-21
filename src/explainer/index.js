@@ -10,6 +10,7 @@ setKatex(katex);
 const widgets = {
   codebooks: () => import('./widgets/codebooks.js'),
   cq: () => import('./widgets/cq.js'),
+  floatbits: () => import('./widgets/floatbits.js'),
   fwht: () => import('./widgets/fwht.js'),
   grids: () => import('./widgets/grids.js'),
   grouping: () => import('./widgets/grouping.js'),
