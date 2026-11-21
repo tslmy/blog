@@ -166,12 +166,7 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant">
-  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own color. Click a dot to make its square and arrow thicker. Choose how the levels are placed:</figcaption>
-  <div class="sx-rowlabel sx-block">Levels</div>
-  <div class="sx-opts">
-    <button data-mode="plain" aria-pressed="true"><strong>Reach each group's largest weight</strong><span>Step 1: every group has its own scale, so each gets its own square in its own color, drawn to just reach its largest coordinate, with the evenly spaced levels of plain quantization. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them.</span></button>
-    <button data-mode="fixed" aria-pressed="false"><strong>One fixed grid for all groups</strong><span>Step 3's idea: the length is divided out, so the dots sit on a circle of length 1, and one grid (a single gold square) is shared by every group, here sized for a perfectly flat group (both coordinates 0.71). Whistle's grid is fixed too, but Gaussian-shaped and built for groups of 64.</span></button>
-  </div>
+  <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them. Click a dot to make its square and arrow thicker.</figcaption>
   <svg class="sx-r2" viewBox="0 0 330 300" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels, the grid, and an arrow from each point to the grid point it is stored as"></svg>
 </figure>
 
