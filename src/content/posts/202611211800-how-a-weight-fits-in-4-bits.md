@@ -453,6 +453,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   </div>
   <svg class="sx-ol" viewBox="0 0 640 190" role="img" aria-label="Two histograms of SmolLM2's weights, before and after rotating each group, each with a bell curve drawn over it"></svg>
   <p class="sx-note" aria-live="polite">&nbsp;</p>
+  <table class="sx-stat"></table>
 </figure>
 
 <p>What the real weights show, for groups of 64:</p>
