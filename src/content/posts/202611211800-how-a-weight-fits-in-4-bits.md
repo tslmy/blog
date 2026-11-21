@@ -19,7 +19,7 @@ description: Codebook quantization, step by step, with live figures.
     <button data-k="outlier" aria-pressed="false">add an outlier</button>
     <button data-act="new">new weights</button>
   </div>
-  <svg class="sx-cq" viewBox="0 0 640 150" role="img" aria-label="Weights and evenly spaced quantization levels on a number line"></svg>
+  <svg class="sx-cq" viewBox="0 0 640 182" role="img" aria-label="Weights placed on a value ruler, with evenly spaced quantization levels below, each labelled with its level number"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
   <div class="sx-bits"></div>
 </figure>
