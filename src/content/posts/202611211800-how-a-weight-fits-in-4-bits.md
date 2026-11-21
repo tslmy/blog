@@ -387,33 +387,6 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 </tbody>
 </table></div>
 
-<h4 id="s2-matrix" data-toc="A whole matrix, rotated">A whole matrix, rotated</h4>
-
-<p>Here is the toy matrix from step 1 again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:</p>
-
-<figure class="widget wide" id="rotated-grouping" data-widget="groupingrot">
-  <figcaption><strong>The same matrix, before and after rotating each group.</strong> Each cell is one weight (blue negative, red positive), and white lines separate the groups. A gold outline marks an outlier on the left, and the group that contains it is outlined in the scales heatmap on both sides.</figcaption>
-  <div class="sx-controls">
-    <label>Groups per row <input type="range" min="0" max="4" step="1" value="3" data-k="g"> <output data-o="g"></output></label>
-    <label>Groups with outliers <input type="range" min="0" max="12" step="1" value="6" data-k="nout"> <output data-o="nout"></output></label>
-    <label>Outlier size <input type="range" min="2" max="16" step="1" value="8" data-k="osize"> <output data-o="osize"></output></label>
-    <button data-act="new">New matrix</button>
-  </div>
-  <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmaps of the toy weight matrix, unrotated on the left and rotated on the right"></svg>
-  <p class="sx-gcap">Scale of each group, its largest weight (the more gold, the larger)</p>
-  <svg class="sx-gr" data-v="s" role="img" aria-label="Heatmaps of the scale of each group, unrotated on the left and rotated on the right"></svg>
-  <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
-  <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmaps of the rounding error of each weight, unrotated on the left and rotated on the right"></svg>
-  <table class="sx-stat"></table>
-</figure>
-
-<ul>
-<li><strong>Weights:</strong> an outlier's color is spread across its whole group on the right, as many mild cells instead of one strong one.</li>
-<li><strong>Scales:</strong> the groups that held an outlier are no longer much more gold than their neighbors, because the largest weight in the group has shrunk.</li>
-<li><strong>Errors:</strong> the rows of red cells in those groups fade. Rotation keeps lengths, so the error on the right is the same as the error after rotating back.</li>
-<li>The groups without an outlier barely change, or lose a little, as the table shows.</li>
-</ul>
-
 <details class="detour">
 <summary>Detour: what about the 3D case (3 weights per group)?</summary>
 
@@ -461,6 +434,33 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 <li>At 60° the rotation matrix has entries of ±2/3 and ±1/3, which is as flat as any 3×3 rotation can be. That flattens a lone spike to two thirds of its length, a smaller gain than for bigger groups, where a Hadamard matrix takes it down to \(1/\sqrt{n}\).</li>
 </ul>
 </details>
+
+<h4 id="s2-matrix" data-toc="A whole matrix, rotated">A whole matrix, rotated</h4>
+
+<p>Here is the toy matrix from step 1 again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:</p>
+
+<figure class="widget wide" id="rotated-grouping" data-widget="groupingrot">
+  <figcaption><strong>The same matrix, before and after rotating each group.</strong> Each cell is one weight (blue negative, red positive), and white lines separate the groups. A gold outline marks an outlier on the left, and the group that contains it is outlined in the scales heatmap on both sides.</figcaption>
+  <div class="sx-controls">
+    <label>Groups per row <input type="range" min="0" max="4" step="1" value="3" data-k="g"> <output data-o="g"></output></label>
+    <label>Groups with outliers <input type="range" min="0" max="12" step="1" value="6" data-k="nout"> <output data-o="nout"></output></label>
+    <label>Outlier size <input type="range" min="2" max="16" step="1" value="8" data-k="osize"> <output data-o="osize"></output></label>
+    <button data-act="new">New matrix</button>
+  </div>
+  <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmaps of the toy weight matrix, unrotated on the left and rotated on the right"></svg>
+  <p class="sx-gcap">Scale of each group, its largest weight (the more gold, the larger)</p>
+  <svg class="sx-gr" data-v="s" role="img" aria-label="Heatmaps of the scale of each group, unrotated on the left and rotated on the right"></svg>
+  <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
+  <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmaps of the rounding error of each weight, unrotated on the left and rotated on the right"></svg>
+  <table class="sx-stat"></table>
+</figure>
+
+<ul>
+<li><strong>Weights:</strong> an outlier's color is spread across its whole group on the right, as many mild cells instead of one strong one.</li>
+<li><strong>Scales:</strong> the groups that held an outlier are no longer much more gold than their neighbors, because the largest weight in the group has shrunk.</li>
+<li><strong>Errors:</strong> the rows of red cells in those groups fade. Rotation keeps lengths, so the error on the right is the same as the error after rotating back.</li>
+<li>The groups without an outlier barely change, or lose a little, as the table shows.</li>
+</ul>
 
 <p>So the rotation is settled: one Hadamard matrix, applied to every group. Next come the levels.</p>
 
