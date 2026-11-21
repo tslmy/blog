@@ -95,7 +95,6 @@ description: Codebook quantization, step by step, with live figures.
 <li>Slide "Groups per row" up from one, which is a single scale for the whole row, and watch the rounding error fall.</li>
 <li>"Groups with outliers" and "Outlier size" decide how many groups contain an outlier and how big it is. Slide the first down to 0 to see how much of the effect the added outliers cause.</li>
 <li>The 16 levels are spread evenly up to the largest weight in each group: the plain scheme from the figure above.</li>
-<li>The weights are drawn with a few large ones among many small ones, even before any outlier is added.</li>
 </ul>
 
 <figure class="widget wide" id="why-grouped" data-widget="grouping">
