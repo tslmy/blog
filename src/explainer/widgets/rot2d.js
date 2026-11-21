@@ -14,11 +14,13 @@ const turn2 = (p, d) => { const c = Math.cos(d * Math.PI / 180), s = Math.sin(d 
 const scenes = {};
 // The groups run from one extreme to the other: the first is short and lies on an axis, the last is long and lies on a diagonal, and the groups in between are spread evenly
 // in length (0.35 to 1.35) and in direction (0 to 45 degrees). The first half are closer to an axis ("spiky", triangles), the second half closer to a diagonal ("flat", circles).
+// Group i is then turned by a multiple of 90 degrees, (i mod 4) of them, so that the groups spread over all four quadrants, with weights of both signs;
+// spikiness has a period of 90 degrees, so no curve or error below changes.
 // With data-groups="clusters" (the Hadamard-angle figure) the two halves are instead two clusters, each spread evenly on both sides of its direction (an axis, and a diagonal), so that the troughs of the curves sit exactly at 45 degrees.
 const groupsOf = (sc) => {
   const n = sc.st.n, half = n / 2;
-  if (sc.groups === 'clusters') { const off = (j) => (half > 1 ? (j / (half - 1) - .5) * 8 : 0); return Array.from({ length: n }, (_, i) => { const spiky = i < half, a = ((spiky ? 0 : 45) + off(spiky ? i : i - half)) * Math.PI / 180; return { dir: [Math.cos(a), Math.sin(a)], len: .35 + (n > 1 ? i / (n - 1) : 0), spiky }; }); }
-  return Array.from({ length: n }, (_, i) => { const t = n > 1 ? i / (n - 1) : 0, a = 45 * t * Math.PI / 180; return { dir: [Math.cos(a), Math.sin(a)], len: .35 + t, spiky: i < half }; });
+  if (sc.groups === 'clusters') { const off = (j) => (half > 1 ? (j / (half - 1) - .5) * 8 : 0); return Array.from({ length: n }, (_, i) => { const spiky = i < half, a = ((spiky ? 0 : 45) + off(spiky ? i : i - half)) * Math.PI / 180; const b = a + (i % 4) * Math.PI / 2; return { dir: [Math.cos(b), Math.sin(b)], len: .35 + (n > 1 ? i / (n - 1) : 0), spiky }; }); }
+  return Array.from({ length: n }, (_, i) => { const t = n > 1 ? i / (n - 1) : 0, a = 45 * t * Math.PI / 180; const b = a + (i % 4) * Math.PI / 2; return { dir: [Math.cos(b), Math.sin(b)], len: .35 + t, spiky: i < half }; });
 };
 export default (fig) => {
   let v = () => true;         // is this element of the plot switched on? set once the row of toggles exists
