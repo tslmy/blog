@@ -128,7 +128,7 @@ description: Codebook quantization, step by step, with live figures.
 <li>But you can change the axes you write them against.</li>
 </ul>
 
-<p>To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like the one in the previous figure and at the same cell size. The groups run from a short one on an axis to a long one on a diagonal:</p>
+<p>To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like the one in the previous figure and at the same cell size. The groups run from a short one, where one weight is much bigger than the other, to a long one, where the two weights are equal:</p>
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="strips">
   <figcaption><strong>Groups of two weights.</strong> Each group has a number and a color, so that you can follow it through the figures below.</figcaption>
@@ -136,7 +136,7 @@ description: Codebook quantization, step by step, with live figures.
   <div class="sx-controls">
     <label>Number of groups <input type="range" min="2" max="8" step="2" value="4" data-k="n"> <output data-o="n"></output></label>
       </div>
-  <p class="sx-hint">The first group is short and lies on an axis. The last is long and lies on a diagonal. The groups in between are spread evenly from one to the other, and the number of groups goes up in twos. The first half are closer to an axis (spiky, triangles) and the second half closer to a diagonal (flat, circles).</p>
+  <p class="sx-hint">The first group is short, and one of its two weights is much bigger than the other. The last is long, and its two weights are equal. The groups in between change gradually from one to the other, and the number of groups goes up in twos. In the first half one weight dominates: those groups are spiky (triangles). In the second half the weights are alike: those groups are flat (circles).</p>
   <div class="sx-trip">
     <div class="sx-tcol"><svg class="sx-gr" data-v="tw" role="img" aria-label="The weights of the groups as a row of cells, with each group's scale printed on it"></svg><p class="sx-hint">Weights, with each group's scale printed on it</p></div>
     <div class="sx-tcol"><svg class="sx-gr" data-v="ts" role="img" aria-label="Heatmap of the scale of each group"></svg><p class="sx-hint">Scale of each group, its largest weight (the more gold, the larger)</p></div>
