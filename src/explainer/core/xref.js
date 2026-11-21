@@ -11,6 +11,7 @@ export const mountXref = (root = document) => {
   const hide = () => { btn.hidden = true; from = target = null; away = false; };
   links.forEach((a) => a.addEventListener('click', (e) => {
     const t = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1))); if (!t) return;
+    if (t.tagName === 'DETAILS') t.open = true;     // a target that is a folded detour opens
     e.preventDefault(); from = a; target = t; away = false; btn.hidden = false;
     t.scrollIntoView({ behavior, block: 'start' });
   }));

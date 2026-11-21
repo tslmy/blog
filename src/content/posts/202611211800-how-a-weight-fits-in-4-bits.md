@@ -5,9 +5,9 @@ description: Codebook quantization, step by step, with live figures.
 interactive: true
 ---
 
-Neural networks are mostly big tables of numbers, called weights. SmolLM2-135M, the small language model I put on a 2010 iPod touch, has 134.5 million of them. Stored as 32-bit floats they take 538 MB, twice the iPod's 256 MB of RAM, and every word of an answer means reading all of them once. To fit in memory, and to be read quickly, each weight has to shrink to a few bits.
+Neural networks are mostly big tables of numbers, called weights. [SmolLM2-135M](https://huggingface.co/HuggingFaceTB/SmolLM2-135M) ([Allal et al., 2025](https://arxiv.org/abs/2502.02737)), the small language model I put on a [2010 iPod touch](https://en.wikipedia.org/wiki/IPod_Touch_(4th_generation)), has 134.5 million of them. Stored as 32-bit floats they take 538 MB, twice the iPod's 256 MB of RAM, and every word of an answer means reading all of them once. To fit in memory, and to be read quickly, each weight has to shrink to a few bits.
 
-This article builds up one way to do that: *codebook quantization*, the scheme that the speech model [Whistle](https://huggingface.co/Cactus-Compute/whistle) ships in and that I used for SmolLM2. It is the technical core of [a longer story](https://tslmy.github.io/local-siri-on-ipod-touch-4/) about running Apple's own Siri interface on that iPod, but it stands on its own.
+This article builds up one way to do that: *[codebook](https://en.wikipedia.org/wiki/Vector_quantization) quantization*, the scheme that the speech model [Whistle](https://huggingface.co/Cactus-Compute/whistle) ships in and that I used for SmolLM2. It is the technical core of [a longer story](https://tslmy.github.io/local-siri-on-ipod-touch-4/) about running Apple's own Siri interface on that iPod, but it stands on its own.
 
 We start with the basic idea, a set of levels that each weight rounds to, and how to place the levels. Then come four refinements, each fixing a problem the previous version runs into:
 
@@ -15,7 +15,7 @@ We start with the basic idea, a set of levels that each weight rounds to, and ho
 | --- | --- | --- |
 | Levels | Round each weight to the nearest of a few levels, placed where the weights are (a codebook) | Float formats and evenly spaced levels follow a fixed rule, not the weights |
 | 1. Groups | Each group of 64 weights gets its own scale | One outlier stretches the levels for the whole matrix |
-| 2. Rotation | Multiply each group by a Hadamard matrix | A spike still stretches the levels inside its own group |
+| 2. Rotation | Multiply each group by a [Hadamard matrix](https://en.wikipedia.org/wiki/Hadamard_matrix) | A spike still stretches the levels inside its own group |
 | 3. One codebook | Divide each group by its length, so that one codebook made for a bell curve serves every group | A codebook for every group costs more to store than the weights |
 | 4. Kernel | Rotate the activations once, never rebuild the weights | Decoding 135 million weights per word is too slow |
 
@@ -102,13 +102,13 @@ Quantization methods differ on several independent axes, and this article covers
 
 | Axis | Options | What this article does |
 | --- | --- | --- |
-| What is stored per number | A low-precision float (fp16, bf16, fp8, FP4), or a small integer index | An index, into a codebook |
-| Level spacing | Evenly spaced, geometric (floats), or fitted to the weights (Lloyd–Max, NF4) | Evenly spaced at first, then fitted |
+| What is stored per number | A low-precision float ([fp16](https://en.wikipedia.org/wiki/Half-precision_floating-point_format), [bf16](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format), [fp8](https://arxiv.org/abs/2209.05433), [FP4](https://arxiv.org/abs/2310.10537)), or a small integer index | An index, into a codebook |
+| Level spacing | Evenly spaced, geometric (floats), or fitted to the weights ([Lloyd–Max](https://en.wikipedia.org/wiki/Quantization_(signal_processing)), [NF4](https://arxiv.org/abs/2305.14314)) | Evenly spaced at first, then fitted |
 | Scalar or vector | One number at a time, or a whole group per codebook entry | Scalar |
 | Scale | One per tensor, per row, or per group | One per group of 64 |
-| Preprocessing | None, or a rotation (QuIP#, QuaRot) | A Hadamard rotation |
+| Preprocessing | None, or a rotation ([QuIP#](https://arxiv.org/abs/2402.04396), [QuaRot](https://arxiv.org/abs/2404.00456)) | A Hadamard rotation |
 | What is quantized | Weights only, or activations and the attention cache too | Weights only |
-| When | After training (post-training), or during it (quantization-aware training) | After training, with GPTQ rounding for SmolLM2 |
+| When | After training (post-training), or during it (quantization-aware training) | After training, with [GPTQ](https://arxiv.org/abs/2210.17323) rounding for SmolLM2 |
 
 Where to read more:
 
@@ -238,7 +238,7 @@ Here are the groups from the figure above, split into those that contain an outl
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-- What matters is how spiky a group is: $\max_j |w_j| \,/\, \ell$, its largest weight compared with the group's length $\ell$.
+- What matters is how <a class="xref" href="#measuring-spikiness">spiky</a> a group is: $\max_j |w_j| \,/\, \ell$, its largest weight compared with the group's length $\ell$.
 - We can't remove a spike without changing the weights.
 - But we can change the axes we write the weights against. That is what a rotation does.
 
@@ -365,13 +365,13 @@ So a rotation helps spiky groups and hurts flat ones. That raises a natural ques
 - **In practice we use a heuristic.** Compare the group's largest weight with its overall size, and call the group spiky if that ratio is far bigger than ordinary weights would give.
 - **Whistle does not try to tell.** The converter applies the same rotation to every group. Whether that is a good bet depends on how many groups are spiky and on how many weights each group has, which is where we are heading.
 
-<details class="detour">
+<details class="detour" id="measuring-spikiness">
 <summary>Detour: measuring how spiky a group is</summary>
 
 Two numbers are commonly used. For a group of $n$ weights $w_1, \dots, w_n$ with length $\lVert w\rVert$:
 
 - **Spikiness** $s = \dfrac{\max_j |w_j|}{\lVert w\rVert}$: the largest weight as a share of the group's length. It is the quantity on the curves above. It runs from $1/\sqrt{n}$ (all weights the same size) to 1 (a single weight).
-- **Crest factor** $c = \dfrac{\max_j |w_j|}{\mathrm{rms}(w)} = s\sqrt{n}$, where $\mathrm{rms}(w) = \lVert w\rVert/\sqrt{n}$ is the typical size of a weight. It says how many typical weights the biggest one is worth, so it is easier to compare across group sizes.
+- **[Crest factor](https://en.wikipedia.org/wiki/Crest_factor)** $c = \dfrac{\max_j |w_j|}{\mathrm{rms}(w)} = s\sqrt{n}$, where $\mathrm{rms}(w) = \lVert w\rVert/\sqrt{n}$ is the typical size of a weight. It says how many typical weights the biggest one is worth, so it is easier to compare across group sizes.
 
 To decide what counts as large, compare with groups of ordinary weights, which behave like Gaussian numbers. Here is what 20,000 random Gaussian groups give:
 
