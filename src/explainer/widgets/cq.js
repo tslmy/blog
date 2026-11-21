@@ -1,15 +1,12 @@
 import { $, sv } from '../core/dom.js';
 import { gauss, rng } from '../core/random.js';
+import { gaussianLevels } from '../core/gaussian.js';
 import { fwht } from '../core/linalg.js';
 import { reseedable, switches } from '../core/controls.js';
 
 // 7. Quantizing one group: evenly spaced levels vs rotation + Gaussian codebook
 export default (fig) => {
   const G = 32, SIGMA = 0.02;   // group size shown; weight scale
-  const CB = {   // Lloyd–Max levels for a unit Gaussian, as in Whistle and convert/cq.py
-    2: [-1.507, -0.451, 0.453, 1.51],
-    4: [-2.71, -2.044, -1.595, -1.233, -0.922, -0.64, -0.373, -0.114, 0.144, 0.404, 0.673, 0.961, 1.276, 1.637, 2.084, 2.741],
-  };
   // heavy tails: Student's t with 3 degrees of freedom, a common model for weights with outliers
   const sample = (r) => state.heavy ? gauss(r) / Math.sqrt((gauss(r) ** 2 + gauss(r) ** 2 + gauss(r) ** 2) / 3) : gauss(r);
   const group = (r) => Array.from({ length: G }, () => sample(r) * SIGMA);
@@ -20,7 +17,7 @@ export default (fig) => {
   const quant = (w) => {
     const bits = state.bits4 ? 4 : 2, n = 1 << bits, v = state.rotate ? fwht(w) : w;
     let s, levels;
-    if (state.codebook) { s = norm(v) / Math.sqrt(G); levels = CB[bits]; }          // length-scaled Gaussian codebook
+    if (state.codebook) { s = norm(v) / Math.sqrt(G); levels = gaussianLevels(n); }          // length-scaled Gaussian codebook
     else {                                                                          // evenly spaced up to the largest value
       const m = Math.max(...v.map(Math.abs)); s = m / 3;
       levels = Array.from({ length: n }, (_, k) => (-m + (2 * m / n) * (k + 0.5)) / s);

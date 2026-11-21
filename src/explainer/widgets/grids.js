@@ -1,15 +1,15 @@
 import { ranges } from '../core/controls.js';
 import { $, el, sv, svgLine, svgText } from '../core/dom.js';
+import { gaussianLevels } from '../core/gaussian.js';
 import { fillTable } from '../core/table.js';
 
 // 11b. Two weights of a group as a point, with the grid built from that group's own (unevenly spaced) levels; more groups make the table grow
 export default (fig) => {
   const svg = $(fig, 'svg'), tab = $(fig, '.sx-stat'), note = $(fig, '.sx-readout');
-  const Q = { 2: [.7979], 3: [0, 1.224], 4: [.4528, 1.510], 5: [0, .7646, 1.724], 6: [.3177, 1.000, 1.894], 7: [0, .5606, 1.188, 2.033], 8: [.2451, .7560, 1.344, 2.152] };   // Lloyd-Max levels of a bell curve, positive half
   const SIGMA = [.9, .5, 1.25, .7], P = [[.70, -.38], [-.52, .29], [1.55, .90], [-.85, -1.10]], S = 300 / 6.4, cx = 175, cy = 170;
   const X = (v) => cx + v * S, Y = (v) => cy - v * S, f2 = (v) => (v < 0 ? '−' : '') + Math.abs(v).toFixed(2);
   const swatch = (g, text) => { const span = el('span'); span.style.cssText = `display:inline-block;width:.7rem;height:.7rem;border:2px solid var(--pc${g});vertical-align:-1px;margin-right:.3rem`; const cell = el('span'); cell.append(span, String(text)); return cell; };
-  const levelsOf = (g, L) => { const pos = Q[L], neg = (L % 2 ? pos.slice(1) : pos).slice().reverse().map((q) => -q); return [...neg, ...pos].map((q, k) => SIGMA[g] * q * (1 + .09 * Math.sin(7 * g + 3 * k + 1))); };
+  const levelsOf = (g, L) => gaussianLevels(L).map((q, k) => SIGMA[g] * q * (1 + .09 * Math.sin(7 * g + 3 * k + 1)));
   const ctl = ranges(fig, () => draw());
   const draw = () => {
     const L = ctl.l, n = ctl.n, line = (x1, y1, x2, y2, col, w, o = 1) => svgLine(x1, y1, x2, y2, '', `stroke:${col};stroke-width:${w};opacity:${o}`);
