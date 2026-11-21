@@ -518,6 +518,8 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
+<p id="stock" data-toc="Taking stock: what steps 1–3 buy"><strong>Taking stock: what steps 1 to 3 buy, and what they cost.</strong> The three steps that shape the stored weights are done. Before the last step, which is about using them, here is the whole pipeline on one group, then its gains and its price:</p>
+
 <figure class="widget wide" data-widget="cq">
   <figcaption><strong>Quantizing one group of 32 weights.</strong> Dots are the values to store, ticks the available levels, and lines show where each value rounds to. Turn rotation and the codebook off to compare with plain evenly spaced levels; the average over 500 random groups is the number to watch.</figcaption>
   <div class="sx-controls">
