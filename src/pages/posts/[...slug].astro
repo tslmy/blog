@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import Chart from '../../components/Chart.astro';
 import Minimap from '../../components/Minimap.astro';
+import Explainer from '../../components/Explainer.astro';
 import TimelineStrip from '../../components/TimelineStrip.astro';
 
 export async function getStaticPaths() {
@@ -16,7 +17,8 @@ const { Content } = await render(post);
   <article>
     <h1>{post.data.title}</h1>
     <time>{post.data.date.toISOString().slice(0, 10)}</time>
-    <div class="prose"><Content components={{ Chart }} /></div>
+    <div class:list={['prose', post.data.interactive && 'siri-explainer']}><Content components={{ Chart }} /></div>
+  {post.data.interactive && <Explainer />}
   </article>
   <Minimap />
   <TimelineStrip />

@@ -8,6 +8,7 @@ const posts = defineCollection({
     date: z.coerce.date(),
     description: z.string().optional(),
     draft: z.boolean().default(false),
+    interactive: z.boolean().default(false), // loads the figure runtime (src/explainer) for posts with live figures
   }),
 });
 

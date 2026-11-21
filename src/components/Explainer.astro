@@ -1,0 +1,11 @@
+---
+// Loads the live-figure runtime for posts with `interactive: true`.
+import 'katex/dist/katex.min.css';
+---
+<link rel="stylesheet" href="/explainer/explainer.css" />
+<script>
+  import katex from 'katex';
+  (window as any).katex = katex;
+</script>
+<script is:inline src="/explainer/weight-hist.js" defer></script>
+<script is:inline src="/explainer/explainer.js" defer></script>
