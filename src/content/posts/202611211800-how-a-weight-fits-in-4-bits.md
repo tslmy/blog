@@ -139,6 +139,12 @@ description: Codebook quantization, step by step, with live figures.
     <button data-act="new">new points</button>
   </div>
   <p class="sx-hint">How tightly the groups hug their starting place: at 100% every group is within 10° of it, and at 0% the directions are spread evenly round the circle.</p>
+  <p class="sx-cap2">Here are the same groups as a matrix, like the one in the previous figure. Each row is one group of two weights, so each row is also one of the dots below, with the same number and color. The matrices follow the rotation slider.</p>
+  <div class="sx-trip">
+    <div class="sx-tcol"><svg class="sx-gr" data-v="tw" role="img" aria-label="The weights of the groups as a matrix, one row per group, with each group's scale printed on it"></svg><p class="sx-hint">Weights, with each group's scale printed on it</p></div>
+    <div class="sx-tcol"><svg class="sx-gr" data-v="ts" role="img" aria-label="Heatmap of the scale of each group"></svg><p class="sx-hint">Scale of each group (the more gold, the larger)</p></div>
+    <div class="sx-tcol"><svg class="sx-gr" data-v="te" role="img" aria-label="Heatmap of the rounding error of each weight"></svg><p class="sx-hint">Rounding error (the redder, the larger)</p></div>
+  </div>
   <p class="sx-cap2">A square marks the range of a group's levels, 4 per axis (2 bits). The small dots inside it are the 16 values that group can be stored as: each of its two coordinates is rounded to the nearest level, and a line in the group's color shows where it lands. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them, and rotating pulls them apart. Click a dot to see its numbers below. Choose how the levels are placed:</p>
   <div class="sx-rowlabel sx-block">Levels</div>
   <div class="sx-opts">
