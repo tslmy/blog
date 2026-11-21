@@ -11,6 +11,8 @@ pnpm build
 - **Posts**: Markdown/MDX in `src/content/posts/`, or synced from Obsidian (see below).
 - **Sidenotes**: write plain `[^1]` footnotes; `src/plugins/rehype-sidenotes.mjs` turns them into margin notes (tap-to-reveal under 900px).
 - **Wikilinks**: `[[Post title]]` / `[[Post title|label]]` → `/posts/<slug>/` via `src/plugins/remark-wikilinks.mjs`. Slugs are the lowercased title, so name files accordingly. Embeds (`![[...]]`) are not handled yet.
+- **Math**: write `$inline$` and `$$display$$` TeX; it is rendered at build time (remark-math, rehype-katex).
+- **Live figures**: set `interactive: true` in a post's front matter and write each figure as raw HTML, `<figure class="widget" data-widget="name">…</figure>`. `src/explainer/index.js` loads the module `src/explainer/widgets/name.js` for it on demand and adds a floating contents column. Shared helpers are in `src/explainer/core` (`dom.js` and `toc.js` are also copied into the iPod/Siri project page, which maintains none of its own: see its `scripts/sync-explainer-core.sh`), styles in `src/styles/explainer.css` (page furniture) and `src/styles/figures.css` (what figures draw). The statistics behind the weight histograms are `src/explainer/data/weight-hist.json`, produced by `convert/weight_hist.py` in that project's repository.
 - **Home page**: edit the intro in `src/components/Intro.md`.
 - **Charts**: `<Chart data={[...]} />` (Observable Plot) in `.mdx` posts; see `src/components/Chart.astro`.
 - **RSS**: `/rss.xml`.
