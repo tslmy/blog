@@ -93,10 +93,11 @@ description: Codebook quantization, step by step, with live figures.
 <p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns. Slide the number of groups per row up from one (a single scale for the whole row) and watch the rounding error. Here the 16 levels are spread evenly up to the largest weight in each group, the plain scheme from the figure above:</p>
 
 <figure class="widget wide" data-widget="grouping">
-  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and each group gets its own scale: the number printed on its cells, which is its largest weight (the plain scheme; Whistle uses the group's length instead). Every row has its own groups and scales. Outliers have a gold outline, and a group that contains one is outlined in the scales heatmap. Slide the outliers down to 0 to see how much of the effect they cause.</figcaption>
+  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and each group gets its own scale: the number printed on its cells, which is its largest weight (the plain scheme; Whistle uses the group's length instead). Every row has its own groups and scales. Outliers have a gold outline, and a group that contains one is outlined in the scales heatmap. Slide "Groups with outliers" down to 0 to see how much of the effect they cause. An outlier's size is a multiple of a typical weight.</figcaption>
   <div class="sx-controls">
     <label>Groups per row <input type="range" min="0" max="4" step="1" value="0" data-k="g"> <output data-o="g"></output></label>
-    <label>Outliers <input type="range" min="0" max="24" step="1" value="6" data-k="nout"> <output data-o="nout"></output></label>
+    <label>Groups with outliers <input type="range" min="0" max="12" step="1" value="6" data-k="nout"> <output data-o="nout"></output></label>
+    <label>Outlier size <input type="range" min="2" max="16" step="1" value="8" data-k="osize"> <output data-o="osize"></output></label>
     <button data-act="new">New matrix</button>
   </div>
   <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and each group's scale printed on its cells"></svg>
@@ -116,7 +117,7 @@ description: Codebook quantization, step by step, with live figures.
 <p>Here are the groups from the figure above, split into those that contain an outlier and the rest. Each dot is one group, and the tick marks the average:</p>
 
 <figure class="widget wide" data-widget="outlierloss">
-  <figcaption><strong>Groups with an outlier lose more.</strong> It follows the matrix and the groups per row you chose above, and "New matrix" and the "Outliers" slider change it too.</figcaption>
+  <figcaption><strong>Groups with an outlier lose more.</strong> It follows the matrix and the groups per row you chose above, and "New matrix", "Groups with outliers" and "Outlier size" change it too.</figcaption>
   <svg class="sx-ol" viewBox="0 0 640 200" role="img" aria-label="Average rounding error of each group, split into groups that contain an outlier and groups that do not"></svg>
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
