@@ -130,11 +130,11 @@ description: Codebook quantization, step by step, with live figures.
   <figcaption><strong>Rotating groups of two weights.</strong> Each dot is one group of two weights, drawn as a point on a circle of length 1 (the group's length is divided out, as in step 1). First, make up some groups:</figcaption>
   <div class="sx-controls">
     <span class="sx-rowlabel">Mock groups</span>
-    <span class="sx-seg"><button data-at="axes" aria-pressed="true">near the axes</button><button data-at="diag" aria-pressed="false">near the diagonals</button></span>
+    <span class="sx-seg"><button data-at="axes" aria-pressed="true">one big weight each</button><button data-at="diag" aria-pressed="false">two similar weights each</button></span>
     <label>Spiky groups <input type="range" min="0" max="100" step="1" value="100" data-k="sp"> <output data-o="sp"></output></label>
     <button data-act="new">new points</button>
   </div>
-  <p class="sx-cap2">Near the axes means each group has one big weight and one small one. The "spiky groups" slider sets how tightly the dots hug that place: at 100% every group is within 10° of it, and at 0% the directions are spread evenly round the circle. Next, the levels. The gold square marks their range, 4 per axis (2 bits). The small grey dots are the 16 values a group can be stored as: each of its two coordinates is rounded to the nearest level, and the red line shows where the selected group lands. Choose how the levels are placed:</p>
+  <p class="sx-cap2">These describe the groups as given, before any rotation. With one big weight and one small one, a group starts near an axis. With two similar weights, it starts near a diagonal. The hollow dots always mark where the groups started, and the filled dots are where the rotation has taken them. The "spiky groups" slider sets how tightly the groups hug their starting place: at 100% every group is within 10° of it, and at 0% the directions are spread evenly round the circle. Next, the levels. The gold square marks their range, 4 per axis (2 bits). The small grey dots are the 16 values a group can be stored as: each of its two coordinates is rounded to the nearest level, and the red line shows where the selected group lands. Choose how the levels are placed:</p>
   <div class="sx-controls">
     <span class="sx-rowlabel">Levels</span>
     <span class="sx-seg"><button data-mode="plain" aria-pressed="true">reach each group's largest weight</button><button data-mode="fixed" aria-pressed="false">one fixed grid for all groups</button></span>
@@ -153,8 +153,8 @@ description: Codebook quantization, step by step, with live figures.
   <div class="callout">
     <strong>When does 45° (the Hadamard matrix) give the least spikiness?</strong> Only for certain groups, and it is worth being clear which:
     <ul>
-    <li><strong>Groups with one big weight, which sit near the axes.</strong> They are as far from 45° as possible, so turning by 45° brings them to the flat direction. That is the "near the axes" setting at 100% above.</li>
-    <li><strong>Not groups that sit near the diagonals.</strong> Switch to "near the diagonals" and the curve flips: they are already flat, and 45° turns them into spikes.</li>
+    <li><strong>Groups with one big weight, which start near an axis.</strong> They are as far from 45° as possible, so turning by 45° brings them to the flat direction. That is the "one big weight each" setting at 100% above.</li>
+    <li><strong>Not groups that start near a diagonal.</strong> Switch to "two similar weights each" and the curve flips: they are already flat, and 45° turns them into spikes.</li>
     <li><strong>Not groups spread evenly in every direction.</strong> The curve is nearly flat and no angle helps on average.</li>
     </ul>
     With 64 weights the same holds. A single big weight is a spike along one axis, and the Hadamard matrix spreads it evenly over all 64 outputs. The groups it makes spikier are the ones that already look like one of its rows: a group whose 64 weights are all equal becomes a single spike. Weights with one large outlier are far more common than that, which is why Whistle uses it.
