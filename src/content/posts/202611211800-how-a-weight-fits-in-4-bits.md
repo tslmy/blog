@@ -94,9 +94,10 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 
 <figure class="widget wide" data-widget="rot2d">
-  <figcaption><strong>Rotating groups of two weights.</strong> Each dot is one group, a point on a circle of length 1. The square is the range its levels must cover, with 4 levels per axis (2 bits). The curve shows, at every angle, how big the largest weight is as a share of the group's length, averaged over the dots (lower is flatter, and the rounding error follows it). The gold line marks 45°, where the rotation matches the 2×2 Hadamard matrix.</figcaption>
+  <figcaption><strong>Rotating groups of two weights.</strong> Each dot is one group, a point on a circle of length 1 (the group's length is divided out, as in step 1). The "spiky groups" slider sets how close the dots sit to the axes: at 100% every group has one big weight, and at 0% the directions are spread evenly round the circle. The square is the range its levels must cover, with 4 levels per axis (2 bits). The curve shows, at every angle, how big the largest weight is as a share of the group's length, averaged over the dots (lower is flatter, and the rounding error follows it). The gold line marks 45°, where the rotation matches the 2×2 Hadamard matrix.</figcaption>
   <div class="sx-controls">
     <label>Rotate <input type="range" min="0" max="90" step="1" value="0" data-k="deg"> <output data-o="deg"></output></label>
+    <label>Spiky groups <input type="range" min="0" max="100" step="1" value="100" data-k="sp"> <output data-o="sp"></output></label>
     <button data-act="had">45° (Hadamard)</button>
     <button data-act="reset">reset</button>
     <button data-act="new">new points</button>
@@ -104,7 +105,7 @@ description: Codebook quantization, step by step, with live figures.
   <svg class="sx-r2" viewBox="0 0 640 300" role="img" aria-label="Points on a circle with the square of quantization levels around the selected point, and a curve of average rounding error against rotation angle"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
   <div class="sx-mat"></div>
-  <p class="sx-note">In two dimensions the match is exact: the Hadamard matrix is the 45° rotation with its two outputs swapped. Swapping outputs does not change the rounding error, because the grid is the same either way. As before, the slider is only an animation: Whistle applies the matrix once, all at once.</p>
+  <p class="sx-note">In two dimensions the match is exact: the Hadamard matrix is the 45° rotation with its two outputs swapped. Swapping outputs does not change the rounding error, because the grid is the same either way. Slide "spiky groups" toward 0 and the curve flattens: if the directions are already spread evenly, no rotation helps on average, so the rotation pays off only when groups have outliers. As before, the rotation slider is only an animation: Whistle applies the matrix once, all at once.</p>
 </figure>
 
 <p>With three weights, the same picture is a point in 3D space, one weight per axis:</p>
