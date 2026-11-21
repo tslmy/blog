@@ -1,4 +1,4 @@
-import { $ } from '../core/dom.js';
+import { $, sv } from '../core/dom.js';
 import { jacobi } from '../core/linalg.js';
 import { spin } from '../core/spin.js';
 import { gauss, nextSeed, rng } from '../core/random.js';
@@ -6,8 +6,7 @@ import { gauss, nextSeed, rng } from '../core/random.js';
 // 6c. PCA versus a flattening rotation on a 3D cloud
 export default (fig) => {
   const N = 60, S = 92, CX = 320, CY = 168, state = { ds: 'axes', rot: 'pca', t: 0, yaw: -0.6, pitch: 0.4 }; let seed = 9;
-  const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), NS = 'http://www.w3.org/2000/svg';
-  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
+  const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const rodrigues = (v, ax, ang) => { const c = Math.cos(ang), s = Math.sin(ang), d = ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2], cr = cross(ax, v); return [0, 1, 2].map((i) => v[i] * c + cr[i] * s + ax[i] * d * (1 - c)); };
   const quat = (R) => {                               // rotation matrix to quaternion, then to axis and angle (shortest way round)
@@ -38,15 +37,15 @@ export default (fig) => {
     P.forEach((p) => p.forEach((x, i) => { en[i] += x * x / tot; })); return { err, en, per }; };
   const draw = () => {
     const P = pts.map(turn), now = st(P), before = st(pts), kids = [];
-    const line = (a, b, cls) => { const [x1, y1] = proj(a), [x2, y2] = proj(b); return mk('line', { x1, y1, x2, y2, class: cls }); };
+    const line = (a, b, cls) => { const [x1, y1] = proj(a), [x2, y2] = proj(b); return sv('line', { x1, y1, x2, y2, class: cls }); };
     [[1.5, 0, 0, 'w₁'], [0, 1.5, 0, 'w₂'], [0, 0, 1.5, 'w₃']].forEach(([x, y, z, t]) => {
       kids.push(line([-x, -y, -z], [x, y, z], 'ax'));
-      const [px, py] = proj([x * 1.07, y * 1.07, z * 1.07]), tx = mk('text', { x: px, y: py, class: 'lbl', 'text-anchor': 'middle' }); tx.textContent = t; kids.push(tx);
+      const [px, py] = proj([x * 1.07, y * 1.07, z * 1.07]), tx = sv('text', { x: px, y: py, class: 'lbl', 'text-anchor': 'middle' }); tx.textContent = t; kids.push(tx);
     });
     if (state.rot === 'pca') pc.vecs.forEach((v, k) => { const L = 1.6 * Math.sqrt(pc.vals[k]) + .25, a = turn(v.map((x) => -x * L)), b = turn(v.map((x) => x * L)); kids.push(line(a, b, 'pax')); });
     P.map((p, i) => ({ p, i, d: proj(p)[2] })).sort((a, b) => b.d - a.d).forEach(({ p, i }) => {
       const [x, y] = proj(p), t = Math.min(1, now.per[i] / .45);
-      kids.push(mk('circle', { cx: x, cy: y, r: 3.6, style: `fill:color-mix(in srgb, var(--sx-red) ${t * 100}%, var(--sx-blue))` }));
+      kids.push(sv('circle', { cx: x, cy: y, r: 3.6, style: `fill:color-mix(in srgb, var(--sx-red) ${t * 100}%, var(--sx-blue))` }));
     });
     svg.replaceChildren(...kids);
     const f = (a) => a.map((x) => (x * 100).toFixed(0) + '%').join(', ');

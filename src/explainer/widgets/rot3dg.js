@@ -1,7 +1,10 @@
 import { divColor, goldColor, redColor } from '../core/colors.js';
-import { $, el, sv } from '../core/dom.js';
+import { $, el, sv, svgText } from '../core/dom.js';
 import { matrixCells, matrixGroups } from '../core/matrix.js';
 import { spin } from '../core/spin.js';
+import { groupColor, marker, markerDy, numberedMarker } from '../core/groupstyle.js';
+import { mean, pct0 } from '../core/stats.js';
+import { countLabel, lossStrips, spikyVsFlat } from '../core/strips.js';
 
 // 6a. Groups of three weights: the two-weight figures in 3D. Figures with the same data-scene share their groups; data-layers says what each draws:
 // strips, points, quant (cubes, grids, rings and arrows), ghost (where the groups started), curve (spikiness against angle), loss (how much each group loses).
@@ -15,9 +18,6 @@ const DIAG3 = norm3([1, 1, 1]), TILT = Math.acos(1 / Math.sqrt(3)), TILT_AX = no
 const groups3 = (n) => Array.from({ length: n }, (_, i) => { const t = n > 1 ? i / (n - 1) : 0; return { dir: rodr([1, 0, 0], TILT_AX, TILT * t), len: .35 + t, spiky: i < n / 2 }; });
 const turn3 = (v, deg) => rodr(v, DIAG3, deg * Math.PI / 180);
 const quant3 = (p) => { const m = Math.max(...p.map(Math.abs)), st = 2 * m / 3, ix = p.map((x) => Math.max(0, Math.min(3, Math.round((x + m) / st)))), q = ix.map((k) => -m + k * st); return { m, q, ix, err: Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) / Math.hypot(...p) }; };
-const marker3 = (spiky, cx, cy, r, cls, style, extra) => (spiky
-  ? sv('polygon', { points: `${cx},${cy - r * 1.3} ${cx - r * 1.2},${cy + r * .85} ${cx + r * 1.2},${cy + r * .85}`, class: cls, ...extra }, style)
-  : sv('circle', { cx, cy, r, class: cls, ...extra }, style));
 export default (fig) => {
   const layers = (fig.dataset.layers || 'points').split(/\s+/), has = (l) => layers.includes(l);
   const sc = scenes3[fig.dataset.scene || 'three'] || (scenes3[fig.dataset.scene || 'three'] = { st: { n: 4 }, subs: [] });
@@ -25,17 +25,15 @@ export default (fig) => {
   const CX = 190, CY = 170, S = 100, GOLD = 'var(--sx-gold)', BLUE = 'var(--sx-blue)';
   const svg = $(fig, 'svg.sx-r3g'), note = $(fig, '.sx-readout');
   const on = (sel, ev, fn) => { const e = $(fig, sel); if (e) e.addEventListener(ev, fn); };
-  const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1), pc = (x) => (x * 100).toFixed(0) + '%';
-  const word = (x, y, str, anchor, cls, style) => { const t = sv('text', { x, y, 'text-anchor': anchor, class: cls || 'lbl' }, style); t.textContent = str; return t; };
   let drag = null;
   const draw = () => {
-    const grp = groups3(sc.st.n), N = grp.length, col = (i) => `var(--pc${i % 8})`; rot.sel = Math.min(rot.sel, N - 1);
-    const P0 = grp.map((g) => g.dir.map((x) => x * g.len)), P = P0.map((p) => turn3(p, rot.deg)), Q = P.map(quant3), inside = (sp) => (sp ? 3 : .5);
+    const grp = groups3(sc.st.n), N = grp.length, col = groupColor; rot.sel = Math.min(rot.sel, N - 1);
+    const P0 = grp.map((g) => g.dir.map((x) => x * g.len)), P = P0.map((p) => turn3(p, rot.deg)), Q = P.map(quant3);
     const tw = $(fig, '[data-v=tw]');
     if (tw) {                                          // a row of weights cut into groups of three, with the scales and the rounding errors, at the cell size of the other figures
       const CW = 10, RH = 11, BAND = 15, scl = Q.map((o) => o.m), smax = Math.max(...scl), line1 = { R: 1, C: 3 * N, CW, RH, gs: 3, rows: false };
       const w = (c) => P[(c / 3) | 0][c % 3], q = (c) => Q[(c / 3) | 0].q[c % 3];
-      const chips = P.flatMap((p, i) => { const g = marker3(grp[i].spiky, (i + .5) * 3 * CW, 7, 5.5, '', `fill:${col(i)}`), t = sv('text', { x: (i + .5) * 3 * CW, y: 7.3 + (grp[i].spiky ? 1.5 : 0), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'gnum2' }); t.textContent = i + 1; return [g, t]; });
+      const chips = P.flatMap((p, i) => { const g = marker(grp[i].spiky, (i + .5) * 3 * CW, 7, 5.5, '', `fill:${col(i)}`), t = sv('text', { x: (i + .5) * 3 * CW, y: 7.3 + (grp[i].spiky ? 1.5 : 0), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'gnum2' }); t.textContent = i + 1; return [g, t]; });
       const put = (e, h, kids) => { e.setAttribute('viewBox', `0 0 640 ${h}`); e.replaceChildren(...kids); };
       const shifted = sv('g', { transform: `translate(0,${BAND})` }); shifted.append(...matrixCells({ ...line1, color: (r, c) => divColor(w(c), 1.5), label: (r, g) => scl[g].toFixed(2) }));
       put(tw, BAND + RH, [...chips, shifted]);
@@ -44,27 +42,20 @@ export default (fig) => {
     }
     const lossSvg = $(fig, '[data-v=loss]');
     if (lossSvg) {                                     // how much each group loses, first half against second half
-      const kids = [], rows = [['First half', 'closer to an axis (spiky)', true, 52], ['Second half', 'closer to the diagonal (flat)', false, 118]], top = has('curve') ? .6 : Math.max(...Q.map((o) => o.err)) * 1.2, x0 = 200, x1 = 620, X = (x) => x0 + (x1 - x0) * x / top;
-      kids.push(sv('line', { x1: x0, x2: x1, y1: 158, y2: 158, class: 'ax' }));
-      const step = top > .5 ? .2 : top > .25 ? .1 : .05;
-      for (let x = 0; x <= top; x += step) { kids.push(sv('line', { x1: X(x), x2: X(x), y1: 158, y2: 163, class: 'ax' })); kids.push(word(X(x), 176, pc(x), 'middle')); }
-      kids.push(word((x0 + x1) / 2, 194, 'rounding error of the group, as a share of its length', 'middle'));
-      rows.forEach(([name, sub, flag, y]) => {
-        const list = Q.map((o, i) => ({ i, loss: o.err })).filter((g) => grp[g.i].spiky === flag);
-        kids.push(word(10, y - 8, name, 'start', 'lbl rowname'), word(10, y + 7, sub, 'start'), word(10, y + 22, `${list.length} group${list.length === 1 ? '' : 's'}`, 'start'));
-        list.forEach((g, k) => { const cx = X(g.loss), cy = y + ((k % 3) - 1) * 20; kids.push(marker3(flag, cx, cy, 8, 'lossdot', `fill:${col(g.i)}`), word(cx, cy + inside(flag), g.i + 1, 'middle', 'lbl gnum', 'fill:var(--bg);dominant-baseline:central')); });
-        const mu = mean(list.map((g) => g.loss)); kids.push(sv('line', { x1: X(mu), x2: X(mu), y1: y - 38, y2: y + 38, class: 'mean' }), word(X(mu), y - 42, 'mean ' + pc(mu), 'middle', 'lbl meant'));
-      });
-      lossSvg.replaceChildren(...kids);
-      const ln = $(fig, '[data-v=lossnote]'), mw = mean(Q.filter((o, i) => grp[i].spiky).map((o) => o.err)), mo = mean(Q.filter((o, i) => !grp[i].spiky).map((o) => o.err));
-      if (ln) ln.textContent = `The first half (spiky, triangles) lose ${pc(mw)} of their length on average, the second half (flat, circles) ${pc(mo)}.${mo < .005 ? ' The flat groups lose almost nothing.' : mw >= mo * 1.05 ? ` The spiky ones lose ${(mw / mo).toFixed(1)} times as much.` : mo >= mw * 1.05 ? ` Now the flat ones lose more: ${(mo / mw).toFixed(1)} times as much.` : ' About the same.'}`;
+      const top = has('curve') ? .6 : Math.max(...Q.map((o) => o.err)) * 1.2;
+      const names = [['First half', 'closer to an axis (spiky)'], ['Second half', 'closer to the diagonal (flat)']];
+      const losses = (spiky) => Q.map((o, i) => ({ i, loss: o.err })).filter((g) => grp[g.i].spiky === spiky);
+      const strip = (spiky, y) => ({ lines: [...names[spiky ? 0 : 1], countLabel(losses(spiky))], y, items: losses(spiky), mark: (g, cx, cy) => numberedMarker({ spiky, cx, cy, n: g.i + 1, color: col(g.i) }) });
+      lossSvg.replaceChildren(...lossStrips({ rows: [strip(true, 52), strip(false, 118)], top, x0: 200, axisY: 158, step: top > .5 ? .2 : top > .25 ? .1 : .05, format: pct0, caption: 'rounding error of the group, as a share of its length' }));
+      const ln = $(fig, '[data-v=lossnote]');
+      if (ln) ln.textContent = spikyVsFlat({ first: 'The first half (spiky, triangles)', second: 'the second half (flat, circles)', spiky: mean(losses(true).map((g) => g.loss)), flat: mean(losses(false).map((g) => g.loss)), format: pct0 });
     }
     if (!svg) return;
     const kids = [], sel = P[rot.sel], { m, err } = Q[rot.sel];
     // Camera off: it stays with the axes and the points move. On: it stays with the points, and everything else turns the other way.
     const proj = (p0) => { const p = rot.follow ? turn3(p0, -rot.deg) : p0, cy = Math.cos(view.yaw), sy = Math.sin(view.yaw), cp = Math.cos(view.pitch), sp = Math.sin(view.pitch), x1 = p[0] * cy - p[1] * sy, y1 = p[0] * sy + p[1] * cy; return [CX + S * x1, CY - S * (p[2] * cp + y1 * sp), y1 * cp - p[2] * sp]; };
     const seg = (a, b, cls, style) => { const [x1, y1] = proj(a), [x2, y2] = proj(b); return sv('line', { x1, y1, x2, y2, class: cls }, style); };
-    [[1.5, 0, 0, 'w₁'], [0, 1.5, 0, 'w₂'], [0, 0, 1.5, 'w₃']].forEach(([x, y, z, t]) => { kids.push(seg([-x, -y, -z], [x, y, z], 'ax')); const [px, py] = proj([x * 1.09, y * 1.09, z * 1.09]); kids.push(word(px, py + 4, t, 'middle', 'lbl axl')); });
+    [[1.5, 0, 0, 'w₁'], [0, 1.5, 0, 'w₂'], [0, 0, 1.5, 'w₃']].forEach(([x, y, z, t]) => { kids.push(seg([-x, -y, -z], [x, y, z], 'ax')); const [px, py] = proj([x * 1.09, y * 1.09, z * 1.09]); kids.push(svgText(px, py + 4, t, 'middle', 'lbl axl')); });
     if (has('quant')) {
       const edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
       Q.forEach((o, i) => {                            // every group has its own cube of levels, in its own colour
@@ -74,8 +65,8 @@ export default (fig) => {
       });
       if (v('end')) Q.forEach((o, i) => {              // a hollow marker where each group is stored
         const [x, y] = proj(o.q), [px, py] = proj(P[i]);
-        kids.push(marker3(grp[i].spiky, x, y, 8, 'dest', `stroke:${col(i)};stroke-width:${i === rot.sel ? 3 : 2}`));
-        if (Math.hypot(x - px, y - py) >= 22) kids.push(word(x, y + inside(grp[i].spiky), i + 1, 'middle', 'lbl gnum', `fill:${col(i)};dominant-baseline:central`));
+        kids.push(marker(grp[i].spiky, x, y, 8, 'dest', `stroke:${col(i)};stroke-width:${i === rot.sel ? 3 : 2}`));
+        if (Math.hypot(x - px, y - py) >= 22) kids.push(svgText(x, y + markerDy(grp[i].spiky), i + 1, 'middle', 'lbl gnum', `fill:${col(i)};dominant-baseline:central`));
       });
       if (v('trail')) P.forEach((p, i) => {            // an arrow from each group to the grid point it is stored as
         const [x1, y1] = proj(p), [x2, y2] = proj(Q[i].q), d = Math.hypot(x2 - x1, y2 - y1); if (d < 22) return;
@@ -85,9 +76,9 @@ export default (fig) => {
         kids.push(sv('line', { x1: sx, y1: sy, x2: bx, y2: by, class: 'snap3' }, `stroke:${col(i)};stroke-width:${wd}`), sv('polygon', { points: tri, class: 'arrh' }, `fill:${col(i)}`));
       });
     }
-    if (has('ghost') && v('pre')) P0.forEach((p, i) => { const [cx, cy] = proj(p); kids.push(marker3(grp[i].spiky, cx, cy, 7, 'ghost', `stroke:${col(i)}`)); });   // where the groups started, relative to the axes
+    if (has('ghost') && v('pre')) P0.forEach((p, i) => { const [cx, cy] = proj(p); kids.push(marker(grp[i].spiky, cx, cy, 7, 'ghost', `stroke:${col(i)}`)); });   // where the groups started, relative to the axes
     if (v('start')) P.map((p, i) => ({ i, pr: proj(p) })).sort((a, b) => b.pr[2] - a.pr[2]).forEach(({ i, pr }) => {   // far ones first
-      kids.push(marker3(grp[i].spiky, pr[0], pr[1], 8, 'pt' + (i === rot.sel ? ' sel' : ''), `fill:${col(i)}`, { 'data-i': i }), word(pr[0], pr[1] + inside(grp[i].spiky), i + 1, 'middle', 'lbl gnum', 'fill:var(--bg);dominant-baseline:central'));
+      kids.push(marker(grp[i].spiky, pr[0], pr[1], 8, 'pt' + (i === rot.sel ? ' sel' : ''), `fill:${col(i)}`, { 'data-i': i }), svgText(pr[0], pr[1] + markerDy(grp[i].spiky), i + 1, 'middle', 'lbl gnum', 'fill:var(--bg);dominant-baseline:central'));
     });
     let curves = null;
     if (has('curve')) {                                // the largest weight as a share of the group's length, at every angle, for each half
@@ -97,16 +88,16 @@ export default (fig) => {
       kids.push(sv('line', { x1: x0, x2: x1, y1: y0, y2: y0, class: 'ax' }), sv('line', { x1: x0, x2: x0, y1: y0, y2: y1, class: 'ax' }), sv('line', { x1: CXa(60), x2: CXa(60), y1: y0, y2: y1, class: 'hadl' }));
       [[cW, GOLD], [cO, BLUE]].forEach(([c, color]) => kids.push(sv('polyline', { points: c.map((e, d) => `${CXa(d)},${CYa(e)}`).join(' '), class: 'crv' }, `stroke:${color}`), sv('circle', { cx: CXa(rot.deg), cy: CYa(c[rot.deg]), r: 4.5, class: 'cdot' }, `fill:${color}`)));
       kids.push(sv('line', { x1: CXa(rot.deg), x2: CXa(rot.deg), y1: y0, y2: y1, class: 'cur' }));
-      [0, 60, 120].forEach((d) => kids.push(word(CXa(d), y0 + 15, d + '°', 'middle')));
-      [.6, .8, 1].forEach((x) => kids.push(sv('line', { x1: x0 - 4, x2: x0, y1: CYa(x), y2: CYa(x), class: 'ax' }), word(x0 - 8, CYa(x) + 4, pc(x), 'end')));
-      kids.push(marker3(true, x0 - 32, 32, 6, 'ghost', `stroke:${GOLD};stroke-dasharray:none`), word(x0 - 22, 36, 'first half (spiky)', 'start'), marker3(false, x0 + 96, 32, 6, 'ghost', `stroke:${BLUE};stroke-dasharray:none`), word(x0 + 106, 36, 'second half (flat)', 'start'));
-      kids.push(word(x0 - 40, y1 - 38, 'largest weight ÷ length (average)', 'start'), word((x0 + x1) / 2, y0 + 30, 'rotation angle', 'middle'));
+      [0, 60, 120].forEach((d) => kids.push(svgText(CXa(d), y0 + 15, d + '°', 'middle')));
+      [.6, .8, 1].forEach((x) => kids.push(sv('line', { x1: x0 - 4, x2: x0, y1: CYa(x), y2: CYa(x), class: 'ax' }), svgText(x0 - 8, CYa(x) + 4, pct0(x), 'end')));
+      kids.push(marker(true, x0 - 32, 32, 6, 'ghost', `stroke:${GOLD};stroke-dasharray:none`), svgText(x0 - 22, 36, 'first half (spiky)', 'start'), marker(false, x0 + 96, 32, 6, 'ghost', `stroke:${BLUE};stroke-dasharray:none`), svgText(x0 + 106, 36, 'second half (flat)', 'start'));
+      kids.push(svgText(x0 - 40, y1 - 38, 'largest weight ÷ length (average)', 'start'), svgText((x0 + x1) / 2, y0 + 30, 'rotation angle', 'middle'));
     }
     svg.replaceChildren(...kids);
     if (note && curves) {
       const avgErr = (flag) => (d) => mean(grp.filter((g) => g.spiky === flag).map((g) => quant3(turn3(g.dir.map((x) => x * g.len), d)).err));
-      const set = (flag, name, c) => `${name}: largest weight ${pc(c[rot.deg])} of the length (${pc(c[0])} before), rounding error ${pc(avgErr(flag)(rot.deg))} (${pc(avgErr(flag)(0))} before)`;
-      note.textContent = `Rotated ${rot.deg}°. Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'}): largest weight ${pc(Math.max(...sel.map(Math.abs)) / Math.hypot(...sel))} of its length, rounding error ${pc(err)}. On average, ${set(true, 'first half (spiky, triangles)', curves.cW)}; ${set(false, 'second half (flat, circles)', curves.cO)}.`;
+      const set = (flag, name, c) => `${name}: largest weight ${pct0(c[rot.deg])} of the length (${pct0(c[0])} before), rounding error ${pct0(avgErr(flag)(rot.deg))} (${pct0(avgErr(flag)(0))} before)`;
+      note.textContent = `Rotated ${rot.deg}°. Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'}): largest weight ${pct0(Math.max(...sel.map(Math.abs)) / Math.hypot(...sel))} of its length, rounding error ${pct0(err)}. On average, ${set(true, 'first half (spiky, triangles)', curves.cW)}; ${set(false, 'second half (flat, circles)', curves.cO)}.`;
     }
     const box = $(fig, '.sx-mat');
     if (box) {                                         // the rotation matrix at this angle: its columns are where the three axes go

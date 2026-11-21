@@ -1,4 +1,4 @@
-import { $ } from '../core/dom.js';
+import { $, sv } from '../core/dom.js';
 import { gauss, nextSeed, rng } from '../core/random.js';
 import { fwht } from '../core/linalg.js';
 
@@ -31,21 +31,20 @@ export default (fig) => {
     return { shown, levels, err, n };
   };
   let seed = 11;
-  const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), NS = 'http://www.w3.org/2000/svg';
-  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
+  const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const draw = () => {
     const w = group(rng(seed)), { shown, levels, err, n } = quant(w);
     const r = rng(4242); let avg = 0; for (let i = 0; i < 500; i++) avg += quant(group(r)).err / 500;
     const big = w.reduce((b, x, i) => (Math.abs(x) > Math.abs(w[b]) ? i : b), 0);
     const R = Math.max(1.6, ...shown.map(Math.abs), ...levels.map(Math.abs)) * 1.08, X = (x) => 20 + ((x + R) / (2 * R)) * 600;
-    const kids = [mk('line', { x1: 20, x2: 620, y1: 112, y2: 112, class: 'axis' })];
-    levels.forEach((l) => kids.push(mk('line', { x1: X(l), x2: X(l), y1: 104, y2: 120, class: 'level' })));
+    const kids = [sv('line', { x1: 20, x2: 620, y1: 112, y2: 112, class: 'axis' })];
+    levels.forEach((l) => kids.push(sv('line', { x1: X(l), x2: X(l), y1: 104, y2: 120, class: 'level' })));
     shown.forEach((x, i) => {
       const y = 18 + (i % 6) * 13;
-      kids.push(mk('line', { x1: X(x), x2: X(nearest(levels, x)), y1: y, y2: 104, class: 'snap' }));
-      kids.push(mk('circle', { cx: X(x), cy: y, r: 4, class: !state.rotate && i === big ? 'dot out' : 'dot' }));
+      kids.push(sv('line', { x1: X(x), x2: X(nearest(levels, x)), y1: y, y2: 104, class: 'snap' }));
+      kids.push(sv('circle', { cx: X(x), cy: y, r: 4, class: !state.rotate && i === big ? 'dot out' : 'dot' }));
     });
-    const t = mk('text', { x: 20, y: 142, class: 'lbl' }); t.textContent = `${n} levels`; kids.push(t);
+    const t = sv('text', { x: 20, y: 142, class: 'lbl' }); t.textContent = `${n} levels`; kids.push(t);
     svg.replaceChildren(...kids);
     const used = new Set(shown.map((x) => nearest(levels, x))).size;
     note.textContent = `${state.rotate ? 'Rotated' : 'Raw'} weights, ${state.codebook ? 'Gaussian codebook' : 'evenly spaced levels'}, ${state.bits4 ? 4 : 2} bits: these ${G} values use ${used} of ${n} levels. `

@@ -1,12 +1,11 @@
-import { $ } from '../core/dom.js';
+import { $, sv } from '../core/dom.js';
 import { fwht, jacobi } from '../core/linalg.js';
 import { gauss, nextSeed, rng } from '../core/random.js';
 
 // 6b. PCA versus the Hadamard rotation on the same groups of 8 weights
 export default (fig) => {
   const M = 24, D = 8, CLIP = 4, state = { ds: 'spiky' }; let seed = 3;
-  const svg = $(fig, 'svg'), note = $(fig, '.sx-note'), NS = 'http://www.w3.org/2000/svg';
-  const mk = (tag, attrs) => { const e = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; };
+  const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const data = () => {
     const r = rng(seed), g = () => gauss(r);
     if (state.ds === 'spiky') return Array.from({ length: M }, () => { const row = Array.from({ length: D }, () => .35 * g()); row[Math.floor(r() * D)] += (r() < .5 ? -1 : 1) * (3.5 + .6 * g()); return row; });
@@ -29,11 +28,11 @@ export default (fig) => {
     const X = data(), views = [['As given', X], ['After PCA', pca(X)], ['After a flattening rotation', X.map(fwht)]], kids = [], W = 260, CW = W / D, RH = 5, res = [];
     views.forEach(([title, Y], v) => {
       const x0 = 20 + v * 295, st = stats(Y); res.push(st);
-      const t = mk('text', { x: x0, y: 14, class: 'lbl' }); t.textContent = title; kids.push(t);
-      Y.forEach((r, i) => r.forEach((val, c) => { const k = Math.max(-1, Math.min(1, val / CLIP)); kids.push(mk('rect', { x: x0 + c * CW, y: 22 + i * RH, width: CW - 1, height: RH, style: `fill:color-mix(in srgb, var(${k >= 0 ? '--sx-red' : '--sx-blue'}) ${Math.abs(k) * 100}%, var(--bg))` })); }));
-      st.cols.forEach((e, c) => { const h = Math.max(1, e * 56); kids.push(mk('rect', { x: x0 + c * CW, y: 22 + M * RH + 10 + 56 - h, width: CW - 1, height: h, class: 'pcb' })); });
+      const t = sv('text', { x: x0, y: 14, class: 'lbl' }); t.textContent = title; kids.push(t);
+      Y.forEach((r, i) => r.forEach((val, c) => { const k = Math.max(-1, Math.min(1, val / CLIP)); kids.push(sv('rect', { x: x0 + c * CW, y: 22 + i * RH, width: CW - 1, height: RH, style: `fill:color-mix(in srgb, var(${k >= 0 ? '--sx-red' : '--sx-blue'}) ${Math.abs(k) * 100}%, var(--bg))` })); }));
+      st.cols.forEach((e, c) => { const h = Math.max(1, e * 56); kids.push(sv('rect', { x: x0 + c * CW, y: 22 + M * RH + 10 + 56 - h, width: CW - 1, height: h, class: 'pcb' })); });
       const by = 22 + M * RH + 10 + 56 + 14;
-      [`busiest coordinate: ${(Math.max(...st.cols) * 100).toFixed(0)}% of the energy`, `largest weight: ${(st.spike * 100).toFixed(0)}% of its group's length`, `2-bit rounding error: ${(st.err * 100).toFixed(0)}%`].forEach((txt, i) => { const tx = mk('text', { x: x0, y: by + i * 14, class: 'lbl' }); tx.textContent = txt; kids.push(tx); });
+      [`busiest coordinate: ${(Math.max(...st.cols) * 100).toFixed(0)}% of the energy`, `largest weight: ${(st.spike * 100).toFixed(0)}% of its group's length`, `2-bit rounding error: ${(st.err * 100).toFixed(0)}%`].forEach((txt, i) => { const tx = sv('text', { x: x0, y: by + i * 14, class: 'lbl' }); tx.textContent = txt; kids.push(tx); });
     });
     svg.replaceChildren(...kids);
     note.textContent = state.ds === 'spiky'
