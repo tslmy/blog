@@ -447,7 +447,7 @@ Two things differ from the two-weight picture:
 
 ### A whole matrix, rotated
 
-Here is the toy matrix from step 1 again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:
+Here is <a class="xref" href="#why-grouped">the toy matrix from step 1</a> again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:
 
 <figure class="widget wide" id="rotated-grouping" data-widget="groupingrot">
   <figcaption><strong>The same matrix, before and after rotating each group.</strong> Each cell is one weight (blue negative, red positive), and white lines separate the groups. A gold outline marks an outlier on the left, and the group that contains it is outlined in the scales heatmap on both sides.</figcaption>
