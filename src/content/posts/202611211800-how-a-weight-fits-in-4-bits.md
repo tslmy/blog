@@ -139,7 +139,7 @@ description: Codebook quantization, step by step, with live figures.
     <button data-act="new">new points</button>
   </div>
   <p class="sx-hint">How tightly the groups hug their starting place: at 100% every group is within 10° of it, and at 0% the directions are spread evenly round the circle.</p>
-  <p class="sx-cap2">Here are the same groups as a matrix, like the one in the previous figure. Each row is one group of two weights, so each row is also one of the dots below, with the same number and color. The matrices follow the rotation slider.</p>
+  <p class="sx-cap2">Here is the same data laid out like the previous figure: a row of weights cut into groups of two, with the same cell size. Each group is one of the dots below, with the same number and color. The row grows to the right as you add groups, and it follows the rotation slider.</p>
   <div class="sx-trip">
     <div class="sx-tcol"><svg class="sx-gr" data-v="tw" role="img" aria-label="The weights of the groups as a matrix, one row per group, with each group's scale printed on it"></svg><p class="sx-hint">Weights, with each group's scale printed on it</p></div>
     <div class="sx-tcol"><svg class="sx-gr" data-v="ts" role="img" aria-label="Heatmap of the scale of each group"></svg><p class="sx-hint">Scale of each group (the more gold, the larger)</p></div>
