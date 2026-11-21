@@ -93,14 +93,14 @@ description: Codebook quantization, step by step, with live figures.
 <p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns. Slide the number of groups per row up from one (a single scale for the whole row) and watch the rounding error. Here the 16 levels are spread evenly up to the largest weight in each group, the plain scheme from the figure above:</p>
 
 <figure class="widget wide" data-widget="grouping">
-  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and each group gets its own scale: the number printed on its cells, which is its largest weight (the plain scheme; Whistle uses the group's length instead). Every row has its own groups and scales. Outliers have a gold outline. Turn them off to see how much of the effect they cause.</figcaption>
+  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and each group gets its own scale: the number printed on its cells, which is its largest weight (the plain scheme; Whistle uses the group's length instead). Every row has its own groups and scales. Outliers have a gold outline, and a group that contains one is outlined in the scales heatmap. Turn them off to see how much of the effect they cause.</figcaption>
   <div class="sx-controls">
     <label>Groups per row <input type="range" min="0" max="4" step="1" value="0" data-k="g"> <output data-o="g"></output></label>
     <label><input type="checkbox" checked data-k="out"> outliers</label>
     <button data-act="new">New matrix</button>
   </div>
   <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and each group's scale printed on its cells"></svg>
-  <p class="sx-gcap">Scale of each group, its largest weight (the more gold, the larger)</p>
+  <p class="sx-gcap">Scale of each group, its largest weight (the more gold, the larger). An outline marks a group that contains an outlier.</p>
   <svg class="sx-gr" data-v="s" role="img" aria-label="Heatmap of the scale of each group in each row"></svg>
   <p class="sx-note" data-v="info" aria-live="polite">&nbsp;</p>
   <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
