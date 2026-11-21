@@ -12,6 +12,26 @@ description: Codebook quantization, step by step, with live figures.
 
 <p>The catch is the shape of a group. Most weights are small, but some groups have a few much larger ones, the "outliers" that <a href="https://arxiv.org/abs/2404.00456">much of the quantization literature</a> is about. If the levels are spread evenly up to the largest weight, an outlier stretches them so far apart that the ordinary weights round to the few levels near zero. With 2 bits there are only 4 levels to begin with, so this hurts most there.</p>
 
+<p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns. Slide the number of groups per row up from one (a single scale for the whole row) and watch the rounding error. Here the 16 levels are spread evenly up to the largest weight in each group, which is the plain scheme this paragraph describes:</p>
+
+<figure class="widget wide" data-widget="grouping">
+  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). Black lines are group boundaries, and each group gets its own scale. Click a row to see its scales below the matrix and its rounding error underneath. Turn the outliers off to see how much of the effect they cause.</figcaption>
+  <div class="sx-controls">
+    <label>Groups per row <input type="range" min="0" max="4" step="1" value="0" data-k="g"> <output data-o="g"></output></label>
+    <label><input type="checkbox" checked data-k="out"> outliers</label>
+    <button data-act="new">New matrix</button>
+  </div>
+  <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and one scale bar per group for the selected row"></svg>
+  <p class="sx-note" data-v="info" aria-live="polite">&nbsp;</p>
+  <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
+  <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmap of the rounding error of each weight"></svg>
+  <div class="sx-gstore">
+    <div class="sx-gbar"><div class="idx"></div><div class="scl"></div></div>
+    <p class="sx-note" data-v="store"></p>
+  </div>
+  <table class="sx-gtab"></table>
+</figure>
+
 <p><strong>Step 2: rotate the group.</strong> Before choosing levels, the group is multiplied by a <a href="https://en.wikipedia.org/wiki/Hadamard_matrix">Walsh–Hadamard matrix</a>. That's a square matrix whose entries are all +1 or −1 (divided by √n so it keeps lengths). The 2×2 one is [[1, 1], [1, −1]]. Each bigger one is four copies of the previous one, with the bottom-right copy negated:</p>
 
 <figure class="widget wide" data-widget="hadamard">
@@ -64,7 +84,7 @@ description: Codebook quantization, step by step, with live figures.
 <li>So at 4 bits most of the measured quality gain for SmolLM2 came from GPTQ (below), and the format's other strength is speed, which is step 4.</li>
 </ul>
 
-<p>Stored this way, a group of 64 weights takes 64 × 4 bits plus one 32-bit length: 4.5 bits per weight. SmolLM2 went from 538 MB to 76 MB, and Whistle is 16.9 MB.</p>
+<p>Stored this way, a group of 64 weights takes 64 × 4 bits plus one 32-bit length: 4.5 bits per weight on average, because the one length is shared by all 64. SmolLM2 went from 538 MB to 76 MB, and Whistle is 16.9 MB.</p>
 
 <p><strong>Step 4: never rebuild the weights.</strong> To use a weight you'd normally decode it: look up its level, multiply by the length, rotate back. Doing that for 135 million weights per word would be slow. Instead the kernel uses the fact that rotating both sides of a <a href="https://en.wikipedia.org/wiki/Dot_product">dot product</a> doesn't change it. What a layer computes is the weights' dot product with the incoming numbers (the activations), and since the rotation is its own inverse:</p>
 <pre>  weights · activations  =  (rotated weights) · (rotated activations)
