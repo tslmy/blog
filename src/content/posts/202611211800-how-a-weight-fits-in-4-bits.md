@@ -93,11 +93,12 @@ description: Codebook quantization, step by step, with live figures.
 <p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns:</p>
 <ul>
 <li>Slide "Groups per row" up from one, which is a single scale for the whole row, and watch the rounding error fall.</li>
-<li>"Groups with outliers" and "Outlier size" decide how many groups contain an outlier and how big it is. Slide the first down to 0 to see how much of the effect the outliers cause.</li>
+<li>"Groups with outliers" and "Outlier size" decide how many groups contain an outlier and how big it is. Slide the first down to 0 to see how much of the effect the added outliers cause.</li>
 <li>The 16 levels are spread evenly up to the largest weight in each group: the plain scheme from the figure above.</li>
+<li>The weights are drawn the way real ones behave: most are small and a few are large, even before any outlier is added.</li>
 </ul>
 
-<figure class="widget wide" data-widget="grouping">
+<figure class="widget wide" id="why-grouped" data-widget="grouping">
   <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and every row has its own groups and scales. The number printed on each group is its scale, its largest weight (Whistle uses the group's length instead, as we will see). A gold outline marks an outlier, and a group that contains one is outlined in the scales heatmap.</figcaption>
   <div class="sx-controls">
     <label>Groups per row <input type="range" min="0" max="4" step="1" value="3" data-k="g"> <output data-o="g"></output></label>
@@ -441,7 +442,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 
 <p>Steps 1 and 2 left us with a problem we can now solve. Evenly spaced levels are a poor fit for rotated weights, and storing a fresh set of levels for every group would eat the savings.</p>
 
-<p>Start with the shape of the values. Each rotated weight is a mix of all the weights in its group, so by the <a href="https://en.wikipedia.org/wiki/Central_limit_theorem">central limit theorem</a> the values pile up in a bell curve: most near zero, few in the tails. Here are the weights from "Why weights are grouped" before and after rotating each group. Each group is first divided by its length, so that groups of different sizes can share one histogram (the histogram follows the controls of that figure, so try a bigger group or a bigger outlier):</p>
+<p>Start with the shape of the values. Each rotated weight is a mix of all the weights in its group, so by the <a href="https://en.wikipedia.org/wiki/Central_limit_theorem">central limit theorem</a> the values pile up in a bell curve: most near zero, few in the tails. Here are the weights from <a class="xref" href="#why-grouped">"Why weights are grouped"</a> before and after rotating each group. Each group is first divided by its length, so that groups of different sizes can share one histogram (the histogram follows the controls of that figure, so try a bigger group or a bigger outlier):</p>
 
 <figure class="widget wide" data-widget="hist">
   <figcaption><strong>The weights' histogram, before and after rotation.</strong> Each bar counts the weights in a narrow range of values, measured in standard deviations (σ) after dividing each group by its length. The same weights appear in both panels; the right one has each group multiplied by the Hadamard matrix. Gold marks weights from groups that contain an outlier.</figcaption>
