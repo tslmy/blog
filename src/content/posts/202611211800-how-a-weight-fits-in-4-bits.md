@@ -2,34 +2,33 @@
 title: How a weight fits in 4 bits
 date: '2026-11-21T18:00:00Z'
 description: Codebook quantization, step by step, with live figures.
+interactive: true
 ---
 
-<h3 id="codebook">How a weight fits in 4 bits</h3>
+Both models are mostly big matrices of weights, and each answer word means reading all of them once (§1: memory bandwidth). In 32-bit floats SmolLM2 alone is 538 MB, twice the iPod's RAM, so every weight has to shrink to a few bits. The trick Whistle uses, codebook quantization, is easiest to follow by starting with plain quantization and then adding four refinements. Each one fixes a problem the previous version runs into:
 
-<p>Both models are mostly big matrices of weights, and each answer word means reading all of them once (§1: memory bandwidth). In 32-bit floats SmolLM2 alone is 538 MB, twice the iPod's RAM, so every weight has to shrink to a few bits. The trick Whistle uses, codebook quantization, is easiest to follow by starting with plain quantization and then adding four refinements. Each one fixes a problem the previous version runs into:</p>
+| Stage | Idea | Problem it fixes |
+| --- | --- | --- |
+| Plain quantization | Round each weight to the nearest of a few evenly spaced levels | Starting point |
+| 1. Groups | Each group of 64 weights gets its own scale | One outlier stretches the levels for the whole matrix |
+| 2. Rotation | Multiply each group by a Hadamard matrix | A spike still stretches the levels inside its own group |
+| 3. Codebook | Place the levels for a bell curve, not evenly | Rotated values are bell-shaped, so even levels waste precision |
+| 4. Kernel | Rotate the activations once, never rebuild the weights | Decoding 135 million weights per word is too slow |
 
-<div class="wide"><table>
-<thead><tr><th>Stage</th><th>Idea</th><th>Problem it fixes</th></tr></thead>
-<tbody>
-<tr><td>Plain quantization</td><td>Round each weight to the nearest of a few evenly spaced levels</td><td>Starting point</td></tr>
-<tr><td>1. Groups</td><td>Each group of 64 weights gets its own scale</td><td>One outlier stretches the levels for the whole matrix</td></tr>
-<tr><td>2. Rotation</td><td>Multiply each group by a Hadamard matrix</td><td>A spike still stretches the levels inside its own group</td></tr>
-<tr><td>3. Codebook</td><td>Place the levels for a bell curve, not evenly</td><td>Rotated values are bell-shaped, so even levels waste precision</td></tr>
-<tr><td>4. Kernel</td><td>Rotate the activations once, never rebuild the weights</td><td>Decoding 135 million weights per word is too slow</td></tr>
-</tbody>
-</table></div>
+The "bell curve" of stage 3 is the [normal (Gaussian) distribution](https://en.wikipedia.org/wiki/Normal_distribution): values pile up symmetrically around zero, most close to it and few far out.[^note-1]
 
-<p>The "bell curve" of stage 3 is the <a href="https://en.wikipedia.org/wiki/Normal_distribution">normal (Gaussian) distribution</a>: values pile up symmetrically around zero, most close to it and few far out.<span class="sidenote-wrap"><label for="sn-6" class="sidenote-number"></label><input type="checkbox" id="sn-6" class="sidenote-toggle"><span class="sidenote">A normal distribution is fixed by its centre, here 0, and its spread \(\sigma\). About 68% of the values lie within one \(\sigma\) of the centre and 99.7% within three, which is why a value beyond \(3\sigma\) is rare (0.27%) in the histograms below.</span></span></p>
+[^note-1]: A normal distribution is fixed by its centre, here 0, and its spread $\sigma$. About 68% of the values lie within one $\sigma$ of the centre and 99.7% within three, which is why a value beyond $3\sigma$ is rare (0.27%) in the histograms below.
 
-<p id="plain-quantization" data-toc="Plain quantization"><strong>First, plain quantization.</strong> A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy instead:</p>
-<ul>
-<li><strong>Levels.</strong> Choose a small set of allowed values, called levels.</li>
-<li><strong>Index.</strong> For each weight, remember only which level is nearest. With \(2^b\) levels the index takes \(b\) bits, so 16 levels take \(b = 4\) bits: an eighth of the 32, and the model shrinks \(32/4 = 8\) times.</li>
-<li><strong>Rounding error.</strong> Every weight moves to its nearest level, and the distance it moves is its rounding error. That is the price: precision.</li>
-<li><strong>Scale.</strong> The simplest levels are spread evenly from \(-m\) to \(+m\), where \(m\) is the largest weight in absolute value. With \(2^b\) levels the gap between neighbours is \(\mathrm{gap} = \dfrac{2m}{2^b - 1}\), and level number \(k\), counting from 0, is \(-m + k\cdot\mathrm{gap}\). That one number \(m\) is stored alongside, so the levels can be turned back into real values.</li>
-</ul>
+## Plain quantization
 
-<p>Slide the number of bits and watch the error. Then add an outlier:</p>
+A weight is a number such as 0.137, and a float stores it in 32 bits. Quantization stores a rougher copy instead:
+
+- **Levels.** Choose a small set of allowed values, called levels.
+- **Index.** For each weight, remember only which level is nearest. With $2^b$ levels the index takes $b$ bits, so 16 levels take $b = 4$ bits: an eighth of the 32, and the model shrinks $32/4 = 8$ times.
+- **Rounding error.** Every weight moves to its nearest level, and the distance it moves is its rounding error. That is the price: precision.
+- **Scale.** The simplest levels are spread evenly from $-m$ to $+m$, where $m$ is the largest weight in absolute value. With $2^b$ levels the gap between neighbours is $\mathrm{gap} = \dfrac{2m}{2^b - 1}$, and level number $k$, counting from 0, is $-m + k\cdot\mathrm{gap}$. That one number $m$ is stored alongside, so the levels can be turned back into real values.
+
+Slide the number of bits and watch the error. Then add an outlier:
 
 <figure class="widget wide" data-widget="quantize">
   <figcaption><strong>Rounding 40 weights to a few levels.</strong> Dots are the weights, ticks are the levels, and each line shows where a weight rounds to. More bits mean more levels and a smaller error, but a bigger model. Click a dot to see the actual bits of that weight, before and after.</figcaption>
@@ -43,61 +42,74 @@ description: Codebook quantization, step by step, with live figures.
   <div class="sx-bits"></div>
 </figure>
 
-<p>Adding bits helps, but there is a worse problem: the "outliers" that <a href="https://arxiv.org/abs/2404.00456">much of the quantization literature</a> is about.</p>
-<ul>
-<li>Most weights are small, yet a few are much larger.</li>
-<li>The levels must reach the largest weight, so one outlier stretches them far apart, and the ordinary weights near zero round to just the few levels there.</li>
-<li>The error jumps even though almost no weight changed.</li>
-<li>With 2 bits there are only 4 levels to begin with, so this hurts most there.</li>
-</ul>
-<p>A single scale for everything is the weak point.</p>
+Adding bits helps, but there is a worse problem: the "outliers" that [much of the quantization literature](https://arxiv.org/abs/2404.00456) is about.
 
-<p id="step-1" data-toc="Step 1: cut rows into groups"><strong>Step 1: cut each row into groups.</strong></p>
-<ul>
-<li>A weight matrix has millions of numbers, and one outlier anywhere would stretch the levels for all of them.</li>
-<li>So each row is split, from left to right, into groups of 64 consecutive weights (128 in Whistle), and each group gets its own scale. A group never spans rows. An outlier now only spoils its own group.<span class="sidenote-wrap"><label for="sn-7" class="sidenote-number"></label><input type="checkbox" id="sn-7" class="sidenote-toggle"><span class="sidenote">Group-wise scales for weights are common practice: <a href="https://arxiv.org/abs/2206.01861">ZeroQuant</a> (Yao et al., 2022) uses them for transformers. The outliers behind them are well documented: <a href="https://arxiv.org/abs/2208.07339">LLM.int8()</a> (Dettmers et al., 2022) found a few large-magnitude features in transformer hidden states, about 0.1% of them, that wreck quality when removed.</span></span></li>
-<li>The scale is a number stored once per group. In the plain scheme it is the group's largest weight, which is what the figure below uses. Whistle stores the group's <a href="https://en.wikipedia.org/wiki/Norm_(mathematics)#Euclidean_norm">length</a>, \(\ell = \sqrt{\textstyle\sum_j w_j^2}\), instead, for reasons that become clear in step 3.</li>
-<li>Inside the group, each weight only has to say "which of 16 levels am I closest to", and 16 levels take 4 bits.</li>
-</ul>
+- Most weights are small, yet a few are much larger.
+- The levels must reach the largest weight, so one outlier stretches them far apart, and the ordinary weights near zero round to just the few levels there.
+- The error jumps even though almost no weight changed.
+- With 2 bits there are only 4 levels to begin with, so this hurts most there.
+
+A single scale for everything is the weak point.
+
+## Step 1: cut each row into groups
+
+- A weight matrix has millions of numbers, and one outlier anywhere would stretch the levels for all of them.
+- So each row is split, from left to right, into groups of 64 consecutive weights (128 in Whistle), and each group gets its own scale. A group never spans rows. An outlier now only spoils its own group.[^note-2]
+- The scale is a number stored once per group. In the plain scheme it is the group's largest weight, which is what the figure below uses. Whistle stores the group's [length](https://en.wikipedia.org/wiki/Norm_(mathematics)#Euclidean_norm), $\ell = \sqrt{\textstyle\sum_j w_j^2}$, instead, for reasons that become clear in step 3.
+- Inside the group, each weight only has to say "which of 16 levels am I closest to", and 16 levels take 4 bits.
+
+[^note-2]: Group-wise scales for weights are common practice: [ZeroQuant](https://arxiv.org/abs/2206.01861) (Yao et al., 2022) uses them for transformers. The outliers behind them are well documented: [LLM.int8()](https://arxiv.org/abs/2208.07339) (Dettmers et al., 2022) found a few large-magnitude features in transformer hidden states, about 0.1% of them, that wreck quality when removed.
 
 <details class="detour">
 <summary>Detour: what exactly is a group, and why along a row?</summary>
 
-<p>A group is a run of consecutive columns inside one row. It never spans rows, and two rows never share a scale. For a weight matrix \(W\) with \(\mathrm{out}\) rows and \(\mathrm{in}\) columns, and a group size \(G\):</p>
-<ul>
-<li>Row \(i\), which is one output of the layer, is cut into \(\mathrm{in}/G\) groups, left to right.</li>
-<li>Group \(g\) of row \(i\) holds the weights \(W_{i,\,gG}\) to \(W_{i,\,gG+G-1}\).</li>
-<li>It has its own scale \(s_{i,g}\), so the whole matrix stores \(\mathrm{out}\times\mathrm{in}/G\) scales.</li>
-</ul>
-<pre>  row i:   W[i,0] … W[i,G−1] | W[i,G] … W[i,2G−1] | …
+A group is a run of consecutive columns inside one row. It never spans rows, and two rows never share a scale. For a weight matrix $W$ with $\mathrm{out}$ rows and $\mathrm{in}$ columns, and a group size $G$:
+
+- Row $i$, which is one output of the layer, is cut into $\mathrm{in}/G$ groups, left to right.
+- Group $g$ of row $i$ holds the weights $W_{i,\,gG}$ to $W_{i,\,gG+G-1}$.
+- It has its own scale $s_{i,g}$, so the whole matrix stores $\mathrm{out}\times\mathrm{in}/G$ scales.
+
+```
+  row i:   W[i,0] … W[i,G−1] | W[i,G] … W[i,2G−1] | …
            └──── group 0 ────┘ └───── group 1 ─────┘
-              scale s[i,0]         scale s[i,1]</pre>
+              scale s[i,0]         scale s[i,1]
+```
 
-<p><strong>Why along a row.</strong> A layer turns the incoming numbers \(x\) (the activations) into output \(i\) with a dot product along row \(i\):</p>
-\[ y_i \;=\; \sum_j W_{ij}\,x_j \]
-<p>Each weight is stored as a scale and a level index, \(W_{ij} \approx s_{i,g}\,c_{\mathrm{idx}_{ij}}\), where \(g=\lfloor j/G\rfloor\) is the group that column \(j\) falls in and \(c\) is the list of levels. Put that into the dot product and group the terms by \(g\):</p>
-\[ y_i \;=\; \sum_g s_{i,g}\Bigl(\sum_{j\,\in\,g} c_{\mathrm{idx}_{ij}}\,x_j\Bigr) \]
-<p>Inside the brackets every term shares the same scale, so the scale comes out of the sum. The inner sum uses only small level values and the activations, and the scale is multiplied in once per group instead of once per weight. Step 2 adds the rotation \(H\), which acts on the \(G\) activations of one column block \(x_g\):</p>
-\[ y_i \;=\; \sum_g s_{i,g}\,\bigl(\mathbf{c}_{i,g}\cdot H x_g\bigr) \]
-<p>Here \(\mathbf{c}_{i,g}\) is the vector of the \(G\) levels chosen in group \(g\) of row \(i\). The rotated activations \(H x_g\) do not depend on \(i\), so they are computed once per column block and reused by every row. That works because every row cuts its columns at the same places.</p>
+**Why along a row.** A layer turns the incoming numbers $x$ (the activations) into output $i$ with a dot product along row $i$:
 
-<p><strong>Other layouts.</strong> Groups could be shaped differently, and the same formula shows what each shape does:</p>
-<div class="wide"><table>
-<thead><tr><th>Layout</th><th>Can the scale come out of the sum?</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>Run along a row (used here)</td><td>Yes, one multiply per group</td><td>Contiguous in memory, and the rotated activations are shared by all rows</td></tr>
-<tr><td>Strip down a column</td><td>No: each term of the sum comes from a different strip with its own scale</td><td>One multiply per weight, and the reads are scattered</td></tr>
-<tr><td>Square tile (some formats use 128×128)</td><td>Yes, once per row of the tile</td><td>Far fewer scales, but one outlier spoils a much larger block. This project did not measure it</td></tr>
-</tbody>
-</table></div>
+$$
+y_i \;=\; \sum_j W_{ij}\,x_j
+$$
+
+Each weight is stored as a scale and a level index, $W_{ij} \approx s_{i,g}\,c_{\mathrm{idx}_{ij}}$, where $g=\lfloor j/G\rfloor$ is the group that column $j$ falls in and $c$ is the list of levels. Put that into the dot product and group the terms by $g$:
+
+$$
+y_i \;=\; \sum_g s_{i,g}\Bigl(\sum_{j\,\in\,g} c_{\mathrm{idx}_{ij}}\,x_j\Bigr)
+$$
+
+Inside the brackets every term shares the same scale, so the scale comes out of the sum. The inner sum uses only small level values and the activations, and the scale is multiplied in once per group instead of once per weight. Step 2 adds the rotation $H$, which acts on the $G$ activations of one column block $x_g$:
+
+$$
+y_i \;=\; \sum_g s_{i,g}\,\bigl(\mathbf{c}_{i,g}\cdot H x_g\bigr)
+$$
+
+Here $\mathbf{c}_{i,g}$ is the vector of the $G$ levels chosen in group $g$ of row $i$. The rotated activations $H x_g$ do not depend on $i$, so they are computed once per column block and reused by every row. That works because every row cuts its columns at the same places.
+
+**Other layouts.** Groups could be shaped differently, and the same formula shows what each shape does:
+
+| Layout | Can the scale come out of the sum? | Notes |
+| --- | --- | --- |
+| Run along a row (used here) | Yes, one multiply per group | Contiguous in memory, and the rotated activations are shared by all rows |
+| Strip down a column | No: each term of the sum comes from a different strip with its own scale | One multiply per weight, and the reads are scattered |
+| Square tile (some formats use 128×128) | Yes, once per row of the tile | Far fewer scales, but one outlier spoils a much larger block. This project did not measure it |
+
 </details>
 
-<p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns:</p>
-<ul>
-<li>Slide "Groups per row" up from one, which is a single scale for the whole row, and watch the rounding error fall.</li>
-<li>"Groups with outliers" and "Outlier size" decide how many groups contain an outlier and how big it is. Slide the first down to 0 to see how much of the effect the added outliers cause.</li>
-<li>The 16 levels are spread evenly up to the largest weight in each group: the plain scheme from the figure above.</li>
-</ul>
+To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns:
+
+- Slide "Groups per row" up from one, which is a single scale for the whole row, and watch the rounding error fall.
+- "Groups with outliers" and "Outlier size" decide how many groups contain an outlier and how big it is. Slide the first down to 0 to see how much of the effect the added outliers cause.
+- The 16 levels are spread evenly up to the largest weight in each group: the plain scheme from the figure above.
 
 <figure class="widget wide" id="why-grouped" data-widget="grouping">
   <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines separate the rows and the groups within each row, and every row has its own groups and scales. The number printed on each group is its scale, its largest weight (Whistle uses the group's length instead, as we will see). A gold outline marks an outlier, and a group that contains one is outlined in the scales heatmap.</figcaption>
@@ -120,10 +132,13 @@ description: Codebook quantization, step by step, with live figures.
   <table class="sx-gtab"></table>
 </figure>
 
-<p id="step-2" data-toc="Step 2: rotate the group"><strong>Step 2: rotate the group.</strong> Grouping stops an outlier from spoiling its whole row, but inside its own group it still stretches the levels for the other 63 weights.</p>
-<h4 id="s2-spike" data-toc="A spike costs the whole group">A spike costs the whole group</h4>
+## Step 2: rotate the group
 
-<p>Here are the groups from the figure above, split into those that contain an outlier and the rest. Each dot is one group, and the tick marks the average:</p>
+Grouping stops an outlier from spoiling its whole row, but inside its own group it still stretches the levels for the other 63 weights.
+
+### A spike costs the whole group
+
+Here are the groups from the figure above, split into those that contain an outlier and the rest. Each dot is one group, and the tick marks the average:
 
 <figure class="widget wide" data-widget="outlierloss">
   <figcaption><strong>Groups with an outlier lose more.</strong> It follows the matrix and the groups per row you chose above, and "New matrix", "Groups with outliers" and "Outlier size" change it too.</figcaption>
@@ -131,15 +146,13 @@ description: Codebook quantization, step by step, with live figures.
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-<ul>
-<li>What matters is how spiky a group is: \(\max_j |w_j| \,/\, \ell\), its largest weight compared with the group's length \(\ell\).</li>
-<li>We can't remove a spike without changing the weights.</li>
-<li>But we can change the axes we write the weights against. That is what a rotation does.</li>
-</ul>
+- What matters is how spiky a group is: $\max_j |w_j| \,/\, \ell$, its largest weight compared with the group's length $\ell$.
+- We can't remove a spike without changing the weights.
+- But we can change the axes we write the weights against. That is what a rotation does.
 
-<h4 id="s2-points" data-toc="Groups as points">Groups of two weights, as points</h4>
+### Groups of two weights, as points
 
-<p>To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like one row of the toy matrix above and at the same cell size. The groups run from a short one, where one weight is much bigger than the other, to a long one, where the two weights are equal:</p>
+To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like one row of the toy matrix above and at the same cell size. The groups run from a short one, where one weight is much bigger than the other, to a long one, where the two weights are equal:
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="strips">
   <figcaption><strong>Groups of two weights.</strong> Each group has a number and a color, so that you can follow it through the figures below.</figcaption>
@@ -155,22 +168,21 @@ description: Codebook quantization, step by step, with live figures.
   </div>
 </figure>
 
-<p>Each group is just two numbers, <em>w</em><sub>1</sub> and <em>w</em><sub>2</sub>, so it can also be read as a point on a plane: the first weight is its horizontal coordinate and the second weight is its vertical one. Here are the same groups drawn that way, with the same numbers and colors:</p>
+Each group is just two numbers, *w*<sub>1</sub> and *w*<sub>2</sub>, so it can also be read as a point on a plane: the first weight is its horizontal coordinate and the second weight is its vertical one. Here are the same groups drawn that way, with the same numbers and colors:
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points">
   <figcaption><strong>Groups as points.</strong> Each marker is one group, placed at (<em>w</em><sub>1</sub>, <em>w</em><sub>2</sub>): triangles are the first half (closer to an axis), circles the second half (closer to a diagonal). Change the number of groups above and the markers move.</figcaption>
   <svg class="sx-r2" viewBox="0 0 330 300" style="max-width:34rem" role="img" aria-label="Each group of two weights drawn as a point, with the first weight on the horizontal axis and the second on the vertical axis"></svg>
 </figure>
 
-<h4 id="s2-quant" data-toc="Quantizing the points">Quantizing the points</h4>
+### Quantizing the points
 
-<p>Now let's see what quantization does to these points:</p>
-<ul>
-<li>The 2-bit levels, four per axis, form a grid of 16 points inside a square. A group is stored as the nearest grid point: each of its two weights is rounded to the nearest level, and the two level numbers (2 bits each) are what is saved.</li>
-<li>A trail of fading shadows shows how far that rounding moves a group, from its real weights (the faintest shadow) to the grid point it is stored as (the solid marker). The length of the trail is the group's rounding error.</li>
-<li>A point close to an axis has one big weight and one tiny one, so its square must be as large as the point is long, and the grid is coarse.</li>
-<li>A point on the diagonal has two equal weights, which is as flat as it gets: the square is smaller and the grid finer.</li>
-</ul>
+Now let's see what quantization does to these points:
+
+- The 2-bit levels, four per axis, form a grid of 16 points inside a square. A group is stored as the nearest grid point: each of its two weights is rounded to the nearest level, and the two level numbers (2 bits each) are what is saved.
+- A trail of fading shadows shows how far that rounding moves a group, from its real weights (the faintest shadow) to the grid point it is stored as (the solid marker). The length of the trail is the group's rounding error.
+- A point close to an axis has one big weight and one tiny one, so its square must be as large as the point is long, and the grid is coarse.
+- A point on the diagonal has two equal weights, which is as flat as it gets: the square is smaller and the grid finer.
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail" data-toggles="squares:Squares;grid:Grid points;start:Real weights (start);trail:Trails;end:Stored positions (end);bits:Binary labels">
   <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each grid point is a possible stored value, and the label next to each solid marker gives its group's stored value: the two level numbers in binary, 2 bits per weight. A trail of shadows leads back to the group's real weights. The selected group's levels are numbered along its square. Click a marker to select a group.</figcaption>
@@ -181,14 +193,13 @@ description: Codebook quantization, step by step, with live figures.
   <p class="sx-note" data-v="lossnote" aria-live="polite">&nbsp;</p>
 </figure>
 
-<h4 id="s2-rotate" data-toc="Rotating the points">Rotating the points</h4>
+### Rotating the points
 
-<p>Now rotate the groups and watch what happens to each half:</p>
-<ul>
-<li>The two curves show, at every angle, the largest weight as a share of the group's length, averaged over the spiky first half (gold) and the flat second half (blue). Lower is flatter, and the rounding error follows it.</li>
-<li>The loss diagram under the plot shows how much each group loses at the current angle.</li>
-<li>The camera switch changes the viewpoint. Off, the camera stays with the axes and the points move. On, it stays with the points, and the axes and squares turn the other way.</li>
-</ul>
+Now rotate the groups and watch what happens to each half:
+
+- The two curves show, at every angle, the largest weight as a share of the group's length, averaged over the spiky first half (gold) and the flat second half (blue). Lower is flatter, and the rounding error follows it.
+- The loss diagram under the plot shows how much each group loses at the current angle.
+- The camera switch changes the viewpoint. Off, the camera stays with the axes and the points move. On, it stays with the points, and the axes and squares turn the other way.
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
   <figcaption><strong>Rotating groups of two weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored.</figcaption>
@@ -209,16 +220,15 @@ description: Codebook quantization, step by step, with live figures.
 <details class="detour">
 <summary>Detour: how is this different from PCA?</summary>
 
-<p>If you have met <a href="https://en.wikipedia.org/wiki/Principal_component_analysis">principal component analysis</a> (PCA), this may look familiar, because PCA is also a rotation. But what we are trying to do is exactly the opposite of PCA. PCA looks for the angle that makes data points more spiky, so that most of the information sits in a few coordinates. We look for the angle that flattens them instead:</p>
-<div class="wide"><table>
-<thead><tr><th></th><th>PCA</th><th>What we want</th></tr></thead>
-<tbody>
-<tr><td>Goal</td><td>Make groups spikier: line the axes up with the directions the data varies along most, so the energy piles into a few coordinates</td><td>Make groups flatter: turn spikes away from the axes, so the energy spreads over all coordinates</td></tr>
-<tr><td>Good for</td><td>Compressing, by dropping the small coordinates</td><td>Rounding, where one dominant coordinate stretches the levels for all the others</td></tr>
-<tr><td>In short</td><td>The best angle to concentrate the data</td><td>The best angle to flatten it</td></tr>
-</tbody>
-</table></div>
-<p>Here are both, applied to the same 24 groups of 8 weights. PCA piles the energy into a few coordinates, and a flattening rotation spreads it out:</p>
+If you have met [principal component analysis](https://en.wikipedia.org/wiki/Principal_component_analysis) (PCA), this may look familiar, because PCA is also a rotation. But what we are trying to do is exactly the opposite of PCA. PCA looks for the angle that makes data points more spiky, so that most of the information sits in a few coordinates. We look for the angle that flattens them instead:
+
+|  | PCA | What we want |
+| --- | --- | --- |
+| Goal | Make groups spikier: line the axes up with the directions the data varies along most, so the energy piles into a few coordinates | Make groups flatter: turn spikes away from the axes, so the energy spreads over all coordinates |
+| Good for | Compressing, by dropping the small coordinates | Rounding, where one dominant coordinate stretches the levels for all the others |
+| In short | The best angle to concentrate the data | The best angle to flatten it |
+
+Here are both, applied to the same 24 groups of 8 weights. PCA piles the energy into a few coordinates, and a flattening rotation spreads it out:
 
 <figure class="widget wide" data-widget="pca">
   <figcaption><strong>PCA and a flattening rotation on the same groups.</strong> Each row of a grid is one group of 8 weights (blue negative, red positive). The bars show how the total energy, the sum of squares, is divided among the 8 coordinates. Pick a data set, and compare how each rotation changes the largest coordinate and the rounding error of a group.</figcaption>
@@ -230,12 +240,11 @@ description: Codebook quantization, step by step, with live figures.
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>Here is the same contrast in three dimensions, where you can watch it happen:</p>
-<ul>
-<li>Each dot is a group of three weights, red when its 2-bit rounding error is large and blue when it is small.</li>
-<li>The flattening rotation is a 60° turn about the diagonal direction (1, 1, 1), the flattest rotation of three weights (the detour on three weights at the end of this step shows it).</li>
-<li>Choose a data set and a rotation, then drag the slider from 0 to 100% of that rotation. "Spin the view" turns the camera so you can see the cloud from all sides.</li>
-</ul>
+Here is the same contrast in three dimensions, where you can watch it happen:
+
+- Each dot is a group of three weights, red when its 2-bit rounding error is large and blue when it is small.
+- The flattening rotation is a 60° turn about the diagonal direction (1, 1, 1), the flattest rotation of three weights (the detour on three weights at the end of this step shows it).
+- Choose a data set and a rotation, then drag the slider from 0 to 100% of that rotation. "Spin the view" turns the camera so you can see the cloud from all sides.
 
 <figure class="widget wide" data-widget="pca3d">
   <figcaption><strong>PCA and a flattening rotation, in 3D.</strong> Gold dashed lines are the cloud's principal axes, the directions PCA turns into the coordinate axes. The readout gives the average rounding error and how the energy is divided among the three coordinates. Drag the background to look around.</figcaption>
@@ -251,53 +260,50 @@ description: Codebook quantization, step by step, with live figures.
   <p class="sx-note">The slider is only an animation. A real PCA step applies one matrix, fitted to the data, all at once. The flattening rotation is the 60° turn about (1, 1, 1).</p>
 </figure>
 
-<p>PCA and a flattening rotation do opposite jobs. When the data has no preferred direction (the first data set), PCA's axes are close to arbitrary, so it can help or hurt by chance. When the weights move together (the second), PCA does exactly what compression wants and exactly what rounding does not: it makes every group spikier.</p>
+PCA and a flattening rotation do opposite jobs. When the data has no preferred direction (the first data set), PCA's axes are close to arbitrary, so it can help or hurt by chance. When the weights move together (the second), PCA does exactly what compression wants and exactly what rounding does not: it makes every group spikier.
 
 </details>
 
-<h4 id="s2-tell" data-toc="Spiky or flat?">Spiky or flat? Telling them apart</h4>
+### Spiky or flat? Telling them apart
 
-<p>So a rotation helps spiky groups and hurts flat ones. That raises a natural question: how do we tell which kind a group is?</p>
-<ul>
-<li><strong>There is no sharp line between spiky and flat.</strong> In our figure the groups change gradually from sitting on an axis to sitting on a diagonal, and real groups do the same: how spiky a group is runs on a scale.</li>
-<li><strong>A spiky group usually has one weight much larger than the rest.</strong> That weight is called an outlier, and it is what to look for in a real layer.</li>
-<li><strong>In practice we use a heuristic.</strong> Compare the group's largest weight with its overall size, and call the group spiky if that ratio is far bigger than ordinary weights would give.</li>
-<li><strong>Whistle does not try to tell.</strong> The converter applies the same rotation to every group. Whether that is a good bet depends on how many groups are spiky and on how many weights each group has, which is where we are heading.</li>
-</ul>
+So a rotation helps spiky groups and hurts flat ones. That raises a natural question: how do we tell which kind a group is?
+
+- **There is no sharp line between spiky and flat.** In our figure the groups change gradually from sitting on an axis to sitting on a diagonal, and real groups do the same: how spiky a group is runs on a scale.
+- **A spiky group usually has one weight much larger than the rest.** That weight is called an outlier, and it is what to look for in a real layer.
+- **In practice we use a heuristic.** Compare the group's largest weight with its overall size, and call the group spiky if that ratio is far bigger than ordinary weights would give.
+- **Whistle does not try to tell.** The converter applies the same rotation to every group. Whether that is a good bet depends on how many groups are spiky and on how many weights each group has, which is where we are heading.
 
 <details class="detour">
 <summary>Detour: measuring how spiky a group is</summary>
 
-<p>Two numbers are commonly used. For a group of \(n\) weights \(w_1, \dots, w_n\) with length \(\lVert w\rVert\):</p>
-<ul>
-<li><strong>Spikiness</strong> \(s = \dfrac{\max_j |w_j|}{\lVert w\rVert}\): the largest weight as a share of the group's length. It is the quantity on the curves above. It runs from \(1/\sqrt{n}\) (all weights the same size) to 1 (a single weight).</li>
-<li><strong>Crest factor</strong> \(c = \dfrac{\max_j |w_j|}{\mathrm{rms}(w)} = s\sqrt{n}\), where \(\mathrm{rms}(w) = \lVert w\rVert/\sqrt{n}\) is the typical size of a weight. It says how many typical weights the biggest one is worth, so it is easier to compare across group sizes.</li>
-</ul>
-<p>To decide what counts as large, compare with groups of ordinary weights, which behave like Gaussian numbers. Here is what 20,000 random Gaussian groups give:</p>
-<div class="wide"><table>
-<thead><tr><th>Group size \(n\)</th><th class="num">Flat \(s = 1/\sqrt{n}\)</th><th class="num">Typical \(s\): mean</th><th class="num">99th percentile</th><th class="num">Typical \(c\): mean</th><th class="num">99th percentile</th></tr></thead>
-<tbody>
-<tr><td>2</td><td class="num">0.71</td><td class="num">0.90</td><td class="num">1.00</td><td class="num">1.27</td><td class="num">1.41</td></tr>
-<tr><td>8</td><td class="num">0.35</td><td class="num">0.65</td><td class="num">0.89</td><td class="num">1.84</td><td class="num">2.52</td></tr>
-<tr><td>64</td><td class="num">0.125</td><td class="num">0.33</td><td class="num">0.45</td><td class="num">2.61</td><td class="num">3.60</td></tr>
-<tr><td>128</td><td class="num">0.088</td><td class="num">0.25</td><td class="num">0.34</td><td class="num">2.84</td><td class="num">3.89</td></tr>
-</tbody>
-</table></div>
-<p>A reasonable rule of thumb is to say a group of 64 has an outlier if its crest factor is above about 4: a weight more than four times the typical size, rarer than 1 group in 100 among ordinary ones. The threshold is a choice. The useful readout is the share of groups above it, measured layer by layer.</p>
-<ul>
-<li>In two dimensions the crest factor can never exceed \(\sqrt{2}\), so a rule like this has no bite. Our groups are spiky or flat only because of where we placed them.</li>
-<li>With more weights the gap between a flat group and a spike grows, which is why outliers only become a sharp problem for bigger groups.</li>
-</ul>
+Two numbers are commonly used. For a group of $n$ weights $w_1, \dots, w_n$ with length $\lVert w\rVert$:
+
+- **Spikiness** $s = \dfrac{\max_j |w_j|}{\lVert w\rVert}$: the largest weight as a share of the group's length. It is the quantity on the curves above. It runs from $1/\sqrt{n}$ (all weights the same size) to 1 (a single weight).
+- **Crest factor** $c = \dfrac{\max_j |w_j|}{\mathrm{rms}(w)} = s\sqrt{n}$, where $\mathrm{rms}(w) = \lVert w\rVert/\sqrt{n}$ is the typical size of a weight. It says how many typical weights the biggest one is worth, so it is easier to compare across group sizes.
+
+To decide what counts as large, compare with groups of ordinary weights, which behave like Gaussian numbers. Here is what 20,000 random Gaussian groups give:
+
+| Group size $n$ | Flat $s = 1/\sqrt{n}$ | Typical $s$: mean | 99th percentile | Typical $c$: mean | 99th percentile |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 2 | 0.71 | 0.90 | 1.00 | 1.27 | 1.41 |
+| 8 | 0.35 | 0.65 | 0.89 | 1.84 | 2.52 |
+| 64 | 0.125 | 0.33 | 0.45 | 2.61 | 3.60 |
+| 128 | 0.088 | 0.25 | 0.34 | 2.84 | 3.89 |
+
+A reasonable rule of thumb is to say a group of 64 has an outlier if its crest factor is above about 4: a weight more than four times the typical size, rarer than 1 group in 100 among ordinary ones. The threshold is a choice. The useful readout is the share of groups above it, measured layer by layer.
+
+- In two dimensions the crest factor can never exceed $\sqrt{2}$, so a rule like this has no bite. Our groups are spiky or flat only because of where we placed them.
+- With more weights the gap between a flat group and a spike grows, which is why outliers only become a sharp problem for bigger groups.
+
 </details>
 
-<h4 id="s2-which" data-toc="Which rotation?">Which rotation?</h4>
+### Which rotation?
 
-<p>Many rotations would flatten a spike, as the figures above show. Whistle uses one that needs no multiplications and no stored matrix, because a simple rule generates it: the <a href="https://en.wikipedia.org/wiki/Hadamard_matrix">Walsh–Hadamard matrix</a>.<span class="sidenote-wrap"><label for="sn-8" class="sidenote-number"></label><input type="checkbox" id="sn-8" class="sidenote-toggle"><span class="sidenote">Rotating before quantizing is a published technique. <a href="https://arxiv.org/abs/2402.04396">QuIP#</a> (Tseng et al., 2024) uses a randomized Hadamard transform on the weights, with random signs that this project does not add. <a href="https://arxiv.org/abs/2404.00456">QuaRot</a> (Ashkboos et al., 2024) rotates a whole LLM with Hadamard matrices to remove outliers for 4-bit inference.</span></span> Our groups so far have had two weights, but Whistle's have 64 or 128, so we need one for bigger groups too.</p>
-<p>It is a square matrix whose entries are all +1 or −1, divided by \(\sqrt{n}\) so that it keeps lengths. The 2×2 one is
-\[ H_2 = \frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix} \]
-and each bigger one is four copies of the previous one, with the bottom-right copy negated:
-\[ H_{2n} = \frac{1}{\sqrt{2}}\begin{bmatrix} H_n & H_n \\ H_n & -H_n \end{bmatrix} \]
-That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up to 64 and 128. Here are the entries, before the scaling:</p>
+Many rotations would flatten a spike, as the figures above show. Whistle uses one that needs no multiplications and no stored matrix, because a simple rule generates it: the [Walsh–Hadamard matrix](https://en.wikipedia.org/wiki/Hadamard_matrix).[^note-3] Our groups so far have had two weights, but Whistle's have 64 or 128, so we need one for bigger groups too.
+
+[^note-3]: Rotating before quantizing is a published technique. [QuIP#](https://arxiv.org/abs/2402.04396) (Tseng et al., 2024) uses a randomized Hadamard transform on the weights, with random signs that this project does not add. [QuaRot](https://arxiv.org/abs/2404.00456) (Ashkboos et al., 2024) rotates a whole LLM with Hadamard matrices to remove outliers for 4-bit inference.
+
+It is a square matrix whose entries are all +1 or −1, divided by $\sqrt{n}$ so that it keeps lengths. The 2×2 one is \\[ H\_2 = \\frac{1}{\\sqrt{2}}\\begin{bmatrix} 1 & 1 \\\\ 1 & -1 \\end{bmatrix} \\] and each bigger one is four copies of the previous one, with the bottom-right copy negated: \\[ H\_{2n} = \\frac{1}{\\sqrt{2}}\\begin{bmatrix} H\_n & H\_n \\\\ H\_n & -H\_n \\end{bmatrix} \\] That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up to 64 and 128. Here are the entries, before the scaling:
 
 <figure class="widget wide" data-widget="hadamard">
   <figcaption><strong>Building a Walsh–Hadamard matrix by doubling.</strong> Blue is +1, red is −1. Pick a size, then click a row to see what it computes.</figcaption>
@@ -306,17 +312,14 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>Two properties make this the right tool:</p>
-<ul>
-<li><strong>Every output mixes every input.</strong> Each output is a ± sum of all the group's weights, so one large weight spreads evenly over all 64 outputs instead of dominating one.
-<ul>
-<li>Sums of many ± terms tend toward a bell curve (the <a href="https://en.wikipedia.org/wiki/Central_limit_theorem">central limit theorem</a>), so the rotated group looks much more <a href="https://en.wikipedia.org/wiki/Normal_distribution">Gaussian</a> than the original, with no lone extremes.</li>
-<li><a href="https://arxiv.org/abs/2402.04396">QuIP#</a> and <a href="https://arxiv.org/abs/2404.00456">QuaRot</a> use the same idea for large models.</li>
-</ul></li>
-<li><strong>It is its own inverse.</strong> The rows are <a href="https://en.wikipedia.org/wiki/Orthogonal_matrix">orthogonal</a> and the matrix is symmetric, so applying it twice gives back the original. Rotating loses nothing.</li>
-</ul>
+Two properties make this the right tool:
 
-<p>To see the first property at work: orange is a group of weights as they come, with some outliers mixed in, and blue is the same group after rotation. The histograms below the bars show where the values sit:</p>
+- **Every output mixes every input.** Each output is a ± sum of all the group's weights, so one large weight spreads evenly over all 64 outputs instead of dominating one.
+  - Sums of many ± terms tend toward a bell curve (the [central limit theorem](https://en.wikipedia.org/wiki/Central_limit_theorem)), so the rotated group looks much more [Gaussian](https://en.wikipedia.org/wiki/Normal_distribution) than the original, with no lone extremes.
+  - [QuIP#](https://arxiv.org/abs/2402.04396) and [QuaRot](https://arxiv.org/abs/2404.00456) use the same idea for large models.
+- **It is its own inverse.** The rows are [orthogonal](https://en.wikipedia.org/wiki/Orthogonal_matrix) and the matrix is symmetric, so applying it twice gives back the original. Rotating loses nothing.
+
+To see the first property at work: orange is a group of weights as they come, with some outliers mixed in, and blue is the same group after rotation. The histograms below the bars show where the values sit:
 
 <figure class="widget wide" data-widget="spread">
   <figcaption><strong>What rotation does to a group.</strong> Each bar is one weight. Make the group bigger and watch one tall spike turn into many short bars of random sign, then add outliers and watch the pile in the middle turn into a bell. Both rows share one scale, so the heights are directly comparable.</figcaption>
@@ -331,23 +334,25 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<h4 id="s2-hadamard" data-toc="Why Hadamard flattens best">Why and when the Hadamard matrix flattens best</h4>
+### Why and when the Hadamard matrix flattens best
 
-<p>The figures above showed that rotating a spiky group can help. Here is what makes the Hadamard rotation the one to use, and when it works.</p>
+The figures above showed that rotating a spiky group can help. Here is what makes the Hadamard rotation the one to use, and when it works.
 
-<p>Why: a lone spike of any size ends up, after a Hadamard rotation, equally spread over all \(n\) outputs, so each output holds \(1/\sqrt{n}\) of its length. The more weights share the rotation, the flatter it gets:</p>
-\[ \frac{\text{largest coordinate}}{\text{length}} \;=\; \frac{1}{\sqrt{n}} \]
-<div class="wide"><table>
-<thead><tr><th>Weights in the group</th><th class="num">Largest coordinate after rotating a lone spike</th></tr></thead>
-<tbody>
-<tr><td>1 (nothing to spread over)</td><td class="num">100% of the length</td></tr>
-<tr><td>3 (no Hadamard matrix exists for this size; see the detour on three weights)</td><td class="num">at best 58%</td></tr>
-<tr><td>8</td><td class="num">35%</td></tr>
-<tr><td>64</td><td class="num">12.5% (1/8)</td></tr>
-<tr><td>128</td><td class="num">8.8%</td></tr>
-</tbody>
-</table></div>
-<p>In two dimensions the Hadamard matrix is exactly the 45° rotation with its two outputs swapped, so the two-weight picture shows when it helps. Here it is again, with that angle marked:</p>
+Why: a lone spike of any size ends up, after a Hadamard rotation, equally spread over all $n$ outputs, so each output holds $1/\sqrt{n}$ of its length. The more weights share the rotation, the flatter it gets:
+
+$$
+\frac{\text{largest coordinate}}{\text{length}} \;=\; \frac{1}{\sqrt{n}}
+$$
+
+| Weights in the group | Largest coordinate after rotating a lone spike |
+| --- | ---: |
+| 1 (nothing to spread over) | 100% of the length |
+| 3 (no Hadamard matrix exists for this size; see the detour on three weights) | at best 58% |
+| 8 | 35% |
+| 64 | 12.5% (1/8) |
+| 128 | 8.8% |
+
+In two dimensions the Hadamard matrix is exactly the 45° rotation with its two outputs swapped, so the two-weight picture shows when it helps. Here it is again, with that angle marked:
 
 <figure class="widget wide" data-widget="rot2d" data-scene="had" data-groups="clusters" data-layers="points quant ghost curve" data-had="1">
   <figcaption><strong>The Hadamard angle.</strong> Two kinds of group, as before, but now arranged symmetrically: the spiky groups (triangles) are spread evenly on both sides of an axis, and the flat groups (circles) on both sides of a diagonal. That way the Hadamard matrix, marked on the curves and shown next to the rotation matrix, sits exactly at the bottom of the spiky curve. Rotate:</figcaption>
@@ -374,27 +379,24 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
     </ul>
     With 64 weights the same holds. A single big weight is a spike along one axis, and the Hadamard matrix spreads it evenly over all 64 outputs. The groups it makes spikier are the ones that already look like one of its rows: a group whose 64 weights are all equal becomes a single spike. Weights with one large outlier are far more common than that, which is why Whistle uses it.
   </div>
-
 </figure>
 
-<p>For other group sizes the flattest a rotation can be is set by the length: each row of the matrix has length 1, so its largest entry is at least \(1/\sqrt{n}\). The Hadamard matrix reaches that bound whenever it exists:</p>
-<div class="wide"><table>
-<thead><tr><th>Group size \(n\)</th><th class="num">Smallest largest entry</th><th>Which matrix gets there</th></tr></thead>
-<tbody>
-<tr><td>2</td><td class="num">0.71</td><td>The Hadamard matrix, exactly: the 45° rotation above</td></tr>
-<tr><td>3</td><td class="num">0.67</td><td>No Hadamard matrix of this size exists. The 60° rotation in the detour on three weights is the flattest we found (a numerical search agrees)</td></tr>
-<tr><td>4</td><td class="num">0.5</td><td>The 4×4 Hadamard matrix</td></tr>
-<tr><td>8</td><td class="num">0.35</td><td>The 8×8 Hadamard matrix</td></tr>
-<tr><td>64</td><td class="num">0.125</td><td>The 64×64 Hadamard matrix, which is why groups of 64 (or 128) are a natural size</td></tr>
-</tbody>
-</table></div>
+For other group sizes the flattest a rotation can be is set by the length: each row of the matrix has length 1, so its largest entry is at least $1/\sqrt{n}$. The Hadamard matrix reaches that bound whenever it exists:
+
+| Group size $n$ | Smallest largest entry | Which matrix gets there |
+| --- | ---: | --- |
+| 2 | 0.71 | The Hadamard matrix, exactly: the 45° rotation above |
+| 3 | 0.67 | No Hadamard matrix of this size exists. The 60° rotation in the detour on three weights is the flattest we found (a numerical search agrees) |
+| 4 | 0.5 | The 4×4 Hadamard matrix |
+| 8 | 0.35 | The 8×8 Hadamard matrix |
+| 64 | 0.125 | The 64×64 Hadamard matrix, which is why groups of 64 (or 128) are a natural size |
 
 <details class="detour">
 <summary>Detour: what about the 3D case (3 weights per group)?</summary>
 
-<p>Everything so far used groups of two weights, and Whistle's groups have 64 or 128. Three weights is the case in between that you can still draw. It comes with a catch: <strong>a Hadamard matrix can't be built for three weights.</strong> The doubling rule only makes sizes 2, 4, 8, 16 and so on, and in general a matrix of +1 and −1 entries with perpendicular rows exists only for sizes 1, 2 and multiples of 4. So for three weights we use the flattest rotation we know instead: a turn about the diagonal direction \((1, 1, 1)\), which is best at 60°.</p>
+Everything so far used groups of two weights, and Whistle's groups have 64 or 128. Three weights is the case in between that you can still draw. It comes with a catch: **a Hadamard matrix can't be built for three weights.** The doubling rule only makes sizes 2, 4, 8, 16 and so on, and in general a matrix of +1 and −1 entries with perpendicular rows exists only for sizes 1, 2 and multiples of 4. So for three weights we use the flattest rotation we know instead: a turn about the diagonal direction $(1, 1, 1)$, which is best at 60°.
 
-<p>Here are some groups of three weights, laid out like the two-weight ones. They run from a short group where one weight dominates to a long group where all three weights are equal:</p>
+Here are some groups of three weights, laid out like the two-weight ones. They run from a short group where one weight dominates to a long group where all three weights are equal:
 
 <figure class="widget wide" data-widget="rot3dg" data-scene="three" data-layers="strips">
   <figcaption><strong>Groups of three weights.</strong> Each group has a number and a color. The first half, where one weight dominates, are spiky (triangles). The second half, where the weights are alike, are flat (circles).</figcaption>
@@ -409,7 +411,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   </div>
 </figure>
 
-<p>Three weights make a point in 3D space, one weight per axis. Each group gets a cube of levels, 4 per axis, that just reaches its largest weight. Here is the same setup as for two weights, with the groups rotated about the diagonal:</p>
+Three weights make a point in 3D space, one weight per axis. Each group gets a cube of levels, 4 per axis, that just reaches its largest weight. Here is the same setup as for two weights, with the groups rotated about the diagonal:
 
 <figure class="widget wide" data-widget="rot3dg" data-scene="three" data-layers="points quant ghost curve loss" data-toggles="cubes:Cubes;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
   <figcaption><strong>Rotating groups of three weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored. Drag the background to look around, click a marker to select a group, or switch on "spin the view" and move the slider while everything turns.</figcaption>
@@ -430,16 +432,16 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note">The slider is only an animation: in practice a rotation is applied once, all at once.</p>
 </figure>
 
-<p>Two things differ from the two-weight picture:</p>
-<ul>
-<li>The flat groups sit on the diagonal that the rotation turns about, so they hardly move, and the rotation does not hurt them here the way it did in 2D.</li>
-<li>At 60° the rotation matrix has entries of ±2/3 and ±1/3, which is as flat as any 3×3 rotation can be. That flattens a lone spike to two thirds of its length, a smaller gain than for bigger groups, where a Hadamard matrix takes it down to \(1/\sqrt{n}\).</li>
-</ul>
+Two things differ from the two-weight picture:
+
+- The flat groups sit on the diagonal that the rotation turns about, so they hardly move, and the rotation does not hurt them here the way it did in 2D.
+- At 60° the rotation matrix has entries of ±2/3 and ±1/3, which is as flat as any 3×3 rotation can be. That flattens a lone spike to two thirds of its length, a smaller gain than for bigger groups, where a Hadamard matrix takes it down to $1/\sqrt{n}$.
+
 </details>
 
-<h4 id="s2-matrix" data-toc="A whole matrix, rotated">A whole matrix, rotated</h4>
+### A whole matrix, rotated
 
-<p>Here is the toy matrix from step 1 again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:</p>
+Here is the toy matrix from step 1 again, with every group rotated by the same Hadamard matrix. The left half of each heatmap is the matrix as it was, and the right half is the same weights after rotation. Both halves use the plain scheme from step 1, with 16 evenly spaced levels up to the group's largest weight:
 
 <figure class="widget wide" id="rotated-grouping" data-widget="groupingrot">
   <figcaption><strong>The same matrix, before and after rotating each group.</strong> Each cell is one weight (blue negative, red positive), and white lines separate the groups. A gold outline marks an outlier on the left, and the group that contains it is outlined in the scales heatmap on both sides.</figcaption>
@@ -457,24 +459,22 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <table class="sx-stat"></table>
 </figure>
 
-<ul>
-<li><strong>Weights:</strong> an outlier's color is spread across its whole group on the right, as many mild cells instead of one strong one.</li>
-<li><strong>Scales:</strong> the groups that held an outlier are no longer much more gold than their neighbors, because the largest weight in the group has shrunk.</li>
-<li><strong>Errors:</strong> the rows of red cells in those groups fade. Rotation keeps lengths, so the error on the right is the same as the error after rotating back.</li>
-<li>The groups without an outlier barely change, or lose a little, as the table shows.</li>
-</ul>
+- **Weights:** an outlier's color is spread across its whole group on the right, as many mild cells instead of one strong one.
+- **Scales:** the groups that held an outlier are no longer much more gold than their neighbors, because the largest weight in the group has shrunk.
+- **Errors:** the rows of red cells in those groups fade. Rotation keeps lengths, so the error on the right is the same as the error after rotating back.
+- The groups without an outlier barely change, or lose a little, as the table shows.
 
-<p>So the rotation is settled: one Hadamard matrix, applied to every group. Next come the levels.</p>
+So the rotation is settled: one Hadamard matrix, applied to every group. Next come the levels.
 
-<p id="step-3" data-toc="Step 3: snap to a codebook"><strong>Step 3: snap to a codebook made for bell curves.</strong></p>
+## Step 3: snap to a codebook made for bell curves
 
-<h4 id="s3-expensive" data-toc="Per-group codebooks are expensive">Per-group codebooks are expensive to store</h4>
+### Per-group codebooks are expensive to store
 
-<p>Before the codebook, a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.</p>
+Before the codebook, a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.
 
-<p>Take a group of 64 weights, which is the group size this project uses for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits <em>this</em> group best, which is not evenly spaced.</p>
+Take a group of 64 weights, which is the group size this project uses for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits *this* group best, which is not evenly spaced.
 
-<p>To see such a set, pick two of the 64 weights at random, say the 21st and the 58th, and plot them as one point. The levels of the group, applied to both axes, make a grid around it. Then take the weights at the same two positions in another group: a different point, and a different set of levels, because the other group has its own weights. Add groups and levels below and watch the table:</p>
+To see such a set, pick two of the 64 weights at random, say the 21st and the 58th, and plot them as one point. The levels of the group, applied to both axes, make a grid around it. Then take the weights at the same two positions in another group: a different point, and a different set of levels, because the other group has its own weights. Add groups and levels below and watch the table:
 
 <figure class="widget wide" data-widget="grids">
   <figcaption><strong>Every group has its own levels.</strong> Each colored point is the 21st and 58th weight of one group of 64, and the grid of the same color is built from that group's levels, which are not evenly spaced. The numbers are made up for illustration.</figcaption>
@@ -487,11 +487,11 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>The table keeps growing: one row for every group, one column for every level. Each number takes 32 bits, and a group's 64 weights are stored as indices into its row. A full table is therefore a large part of what a group costs (at 16 levels, two thirds of it).</p>
+The table keeps growing: one row for every group, one column for every level. Each number takes 32 bits, and a group's 64 weights are stored as indices into its row. A full table is therefore a large part of what a group costs (at 16 levels, two thirds of it).
 
-<h4 id="s3-shared" data-toc="One shared codebook">One shared codebook</h4>
+### One shared codebook
 
-<p>That table is what the rest of this step gets rid of. The way out is to make every group look the same, so that one shared row serves them all. What "the same" has to mean is worked out in the next two parts. Then each group stores only its indices and one scale, and the codebook is stored once for the whole model. Here is what one group stores in each scheme, drawn in proportion. Move the sliders to see what the price depends on:</p>
+That table is what the rest of this step gets rid of. The way out is to make every group look the same, so that one shared row serves them all. What "the same" has to mean is worked out in the next two parts. Then each group stores only its indices and one scale, and the codebook is stored once for the whole model. Here is what one group stores in each scheme, drawn in proportion. Move the sliders to see what the price depends on:
 
 <figure class="widget wide" data-widget="codebooks">
   <figcaption><strong>What is stored for one group.</strong> The same three kinds of data: the indices (blue), the group's scale (gold) and a codebook (red).</figcaption>
@@ -507,20 +507,26 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 <details class="detour">
 <summary>Detour: the arithmetic behind it</summary>
 
-<p>Take groups of \(G\) weights, \(b\)-bit indices (so \(2^b\) levels), and \(c\)-bit numbers (\(c = 32\) by default in the figure). Anything stored once for the whole model is negligible, so what counts is what is stored for every group:</p>
-\[ \begin{aligned} \text{shared codebook:}\quad & b + \frac{c}{G} \\ \text{fresh codebook per group:}\quad & b + \frac{2^b\,c}{G} \end{aligned} \]
-<ul>
-<li>The shared scheme pays for one scale per group. The fresh scheme pays for \(2^b\) levels per group instead, which is \(2^b\) times as much: with \(b = 4\), sixteen times.</li>
-<li>The fresh codebook's cost per weight equals the indices' own \(b\) bits when \(G = 2^b c / b\), which is 128 for \(b = 4\) and \(c = 32\). Below that size, the codebooks outweigh the data they describe.</li>
-<li>To keep the fresh codebooks under 10% of the indices, the group would need \(G \ge 10 \cdot 2^b c / b\), which is 1,280 weights for \(b = 4\) and \(c = 32\). But groups have to stay small for step 1 to work: an outlier spoils its whole group, so a big group means more weights spoiled.</li>
-<li>The same logic rules out a different rotation for every group. A dense \(G \times G\) matrix costs \(G^2 c\) bits per group, which is \(G c\) bits per weight, always far more than \(b\). A single Hadamard matrix, generated by a rule, costs 0.</li>
-</ul>
-<p>So sharing is what makes small groups affordable: each group may only pay for a single scale.</p>
+Take groups of $G$ weights, $b$-bit indices (so $2^b$ levels), and $c$-bit numbers ($c = 32$ by default in the figure). Anything stored once for the whole model is negligible, so what counts is what is stored for every group:
+
+$$
+\begin{aligned} \text{shared codebook:}\quad & b + \frac{c}{G} \\ \text{fresh codebook per group:}\quad & b + \frac{2^b\,c}{G} \end{aligned}
+$$
+
+- The shared scheme pays for one scale per group. The fresh scheme pays for $2^b$ levels per group instead, which is $2^b$ times as much: with $b = 4$, sixteen times.
+- The fresh codebook's cost per weight equals the indices' own $b$ bits when $G = 2^b c / b$, which is 128 for $b = 4$ and $c = 32$. Below that size, the codebooks outweigh the data they describe.
+- To keep the fresh codebooks under 10% of the indices, the group would need $G \ge 10 \cdot 2^b c / b$, which is 1,280 weights for $b = 4$ and $c = 32$. But groups have to stay small for step 1 to work: an outlier spoils its whole group, so a big group means more weights spoiled.
+- The same logic rules out a different rotation for every group. A dense $G \times G$ matrix costs $G^2 c$ bits per group, which is $G c$ bits per weight, always far more than $b$. A single Hadamard matrix, generated by a rule, costs 0.
+
+So sharing is what makes small groups affordable: each group may only pay for a single scale.
+
 </details>
 
-<h4 id="s3-shape" data-toc="What shape do the values have?">What shape do the values have?</h4>
+### What shape do the values have?
 
-<p>Trained weights are usually roughly bell-shaped: they start out as random Gaussian numbers, and training adds up many small nudges. Here are the real weights of SmolLM2. Each group is first divided by its length, so that every group is measured on the same scale. Under the plot, the readout gives the <a href="https://en.wikipedia.org/wiki/Kurtosis">kurtosis</a> of the values, which is 3 for a bell curve:<span class="sidenote-wrap"><label for="sn-5" class="sidenote-number"></label><input type="checkbox" id="sn-5" class="sidenote-toggle"><span class="sidenote">Kurtosis measures how heavy the tails are. It is the average of \(x^4\) when the values \(x\) are measured in standard deviations: a bell curve scores 3, a sharper peak with long tails scores more, and values packed into a narrow range score less.</span></span></p>
+Trained weights are usually roughly bell-shaped: they start out as random Gaussian numbers, and training adds up many small nudges. Here are the real weights of SmolLM2. Each group is first divided by its length, so that every group is measured on the same scale. Under the plot, the readout gives the [kurtosis](https://en.wikipedia.org/wiki/Kurtosis) of the values, which is 3 for a bell curve:[^note-4]
+
+[^note-4]: Kurtosis measures how heavy the tails are. It is the average of $x^4$ when the values $x$ are measured in standard deviations: a bell curve scores 3, a sharper peak with long tails scores more, and values packed into a narrow range score less.
 
 <figure class="widget wide" data-widget="hist" data-mode="single">
   <figcaption><strong>SmolLM2's weights as a histogram.</strong> Each bar counts the weights in a narrow range of values, measured in standard deviations (σ) after dividing each group by its length. The dashed curve is an ideal bell curve.</figcaption>
@@ -532,12 +538,14 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>For groups of 64, the attention and feed-forward weights come close to a bell curve, with a kurtosis of 3.2 and 3.1 (a bell curve has 3).<span class="sidenote-wrap"><label for="sn-4" class="sidenote-number"></label><input type="checkbox" id="sn-4" class="sidenote-toggle"><span class="sidenote">The embedding is the exception, with a kurtosis of 5.2: a sharper peak and longer tails.</span></span></p>
+For groups of 64, the attention and feed-forward weights come close to a bell curve, with a kurtosis of 3.2 and 3.1 (a bell curve has 3).[^note-5]
+
+[^note-5]: The embedding is the exception, with a kurtosis of 5.2: a sharper peak and longer tails.
 
 <details class="detour">
 <summary>Detour: does the rotation make them even more bell-shaped?</summary>
 
-<p>As one would expect, yes. Each rotated weight is a mix of all the weights in its group, so by the <a href="https://en.wikipedia.org/wiki/Central_limit_theorem">central limit theorem</a> the values pile up in a bell curve even when the originals do not. Here are the same weights before and after rotating each group:</p>
+As one would expect, yes. Each rotated weight is a mix of all the weights in its group, so by the [central limit theorem](https://en.wikipedia.org/wiki/Central_limit_theorem) the values pile up in a bell curve even when the originals do not. Here are the same weights before and after rotating each group:
 
 <figure class="widget wide" data-widget="hist">
   <figcaption><strong>SmolLM2's weights, before and after rotation.</strong> The same weights appear in both panels; the right one has each group multiplied by the Hadamard matrix. Switch on the log scale to see the tails, where the counts are tiny, or switch off the division to see what the groups' different sizes do.</figcaption>
@@ -552,32 +560,34 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <table class="sx-stat"></table>
 </figure>
 
-<p>For groups of 64:</p>
-<ul>
-<li><strong>Rotation trims the tails and evens out the layers.</strong> Every part lands at a kurtosis of 2.9. That is exactly what a random direction in 64 dimensions gives (\(3G/(G+2)\)), so it cannot get more bell-like than that. It sits a little below the 3 of a normal distribution because a group of fixed length cannot hold extreme values. The share of weights beyond 3σ falls from 0.50% to 0.20%, and the largest value from 7.9σ to 5.5σ.</li>
-<li><strong>It helps most where the weights are least bell-shaped.</strong> The embedding goes from a kurtosis of 5.2 to 2.9. The same holds for groups with an outlier, as in the toy examples earlier. So the rotation is less a source of the bell shape than a guarantee of it.</li>
-<li><strong>Without dividing by the length, the picture is much worse.</strong> Groups differ a lot in size, so the values are a mixture of many bell curves of different widths, which has heavy tails (kurtosis 5.4, largest value 51σ). Rotating helps (3.7, 25σ) but cannot make the groups alike: it mixes the weights inside a group and leaves the group's size alone. That is why the length is divided out first.</li>
-<li><strong>Each group, not just the pile.</strong> A histogram of all the weights together does not prove that each group is bell-shaped, and 64 values could not prove it anyway. What can be checked is whether the groups differ from bell-shaped ones by more than chance would. The kurtosis of a rotated group of 64 has a 10th, 50th and 90th percentile of 2.33, 2.81 and 3.59 in SmolLM2, and 2.33, 2.81 and 3.60 for groups drawn from a true normal distribution. The shared codebook also needs only the pooled shape to be right: if each group were given its own best 16 levels (fitted to those same 64 values, so this flatters it), the rounding error would fall from 9.6% to 7.2%, at the cost of 12 bits per weight instead of 4.5.</li>
-<li><strong>Small groups show little.</strong> In a group of 8 no value can exceed \(\sqrt{8} = 2.8\sigma\), so there are no tails to trim. Slide the group size up to see the effect grow.</li>
-</ul>
+For groups of 64:
+
+- **Rotation trims the tails and evens out the layers.** Every part lands at a kurtosis of 2.9. That is exactly what a random direction in 64 dimensions gives ($3G/(G+2)$), so it cannot get more bell-like than that. It sits a little below the 3 of a normal distribution because a group of fixed length cannot hold extreme values. The share of weights beyond 3σ falls from 0.50% to 0.20%, and the largest value from 7.9σ to 5.5σ.
+- **It helps most where the weights are least bell-shaped.** The embedding goes from a kurtosis of 5.2 to 2.9. The same holds for groups with an outlier, as in the toy examples earlier. So the rotation is less a source of the bell shape than a guarantee of it.
+- **Without dividing by the length, the picture is much worse.** Groups differ a lot in size, so the values are a mixture of many bell curves of different widths, which has heavy tails (kurtosis 5.4, largest value 51σ). Rotating helps (3.7, 25σ) but cannot make the groups alike: it mixes the weights inside a group and leaves the group's size alone. That is why the length is divided out first.
+- **Each group, not just the pile.** A histogram of all the weights together does not prove that each group is bell-shaped, and 64 values could not prove it anyway. What can be checked is whether the groups differ from bell-shaped ones by more than chance would. The kurtosis of a rotated group of 64 has a 10th, 50th and 90th percentile of 2.33, 2.81 and 3.59 in SmolLM2, and 2.33, 2.81 and 3.60 for groups drawn from a true normal distribution. The shared codebook also needs only the pooled shape to be right: if each group were given its own best 16 levels (fitted to those same 64 values, so this flatters it), the rounding error would fall from 9.6% to 7.2%, at the cost of 12 bits per weight instead of 4.5.
+- **Small groups show little.** In a group of 8 no value can exceed $\sqrt{8} = 2.8\sigma$, so there are no tails to trim. Slide the group size up to see the effect grow.
+
 </details>
 
-<h4 id="s3-levels" data-toc="Placing the levels">Placing the levels</h4>
+### Placing the levels
 
-<p>Knowing the shape settles two things:</p>
-<ul>
-<li><strong>The levels can be designed once, ahead of time.</strong> They need only be dense where the bell is tall and sparse where it is short, which evenly spaced levels are not.</li>
-<li><strong>That only works if every group has the same spread \(\sigma\) as well as the same shape.</strong> The best levels for a bell curve of spread \(\sigma\) are the best levels for a bell curve of spread 1, multiplied by \(\sigma\), so the spread is the one thing that must be taken out. Dividing each group by its own length does that: the length is \(\sqrt{G}\) times the group's root-mean-square, so after the division every group has the same \(\sigma\), namely \(1/\sqrt{G}\) per weight. One shared set of levels, made for that one \(\sigma\), then serves every group, with nothing extra to store per group.<span class="sidenote-wrap"><label for="sn-3" class="sidenote-number"></label><input type="checkbox" id="sn-3" class="sidenote-toggle"><span class="sidenote">A side benefit is speed. A 4-bit codebook has only 16 entries, which fit in one CPU register, so many weights can be looked up at once (step 4). Speed is not why the codebook exists: the aim of these steps is a smaller model.</span></span></li>
-</ul>
+Knowing the shape settles two things:
 
-<p>Putting it together, the step does this:</p>
-<ul>
-<li>Divide each group by its length, which is stored as the group's scale. What is left is a direction, so every group is on the same footing.</li>
-<li>The levels come from <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a> run on a Gaussian: dense near zero, where most values are, and sparse in the tails. That set is the codebook.<span class="sidenote-wrap"><label for="sn-9" class="sidenote-number"></label><input type="checkbox" id="sn-9" class="sidenote-toggle"><span class="sidenote">Levels built for normally distributed weights are not unique to this project. The NF4 data type in <a href="https://arxiv.org/abs/2305.14314">QLoRA</a> (Dettmers et al., 2023) is designed for zero-centred normal data too, but places its levels at quantiles of the normal distribution, so that each level serves the same expected number of values, rather than with Lloyd's algorithm.</span></span></li>
-<li>Each weight stores the 4-bit index of its nearest level.</li>
-</ul>
+- **The levels can be designed once, ahead of time.** They need only be dense where the bell is tall and sparse where it is short, which evenly spaced levels are not.
+- **That only works if every group has the same spread $\sigma$ as well as the same shape.** The best levels for a bell curve of spread $\sigma$ are the best levels for a bell curve of spread 1, multiplied by $\sigma$, so the spread is the one thing that must be taken out. Dividing each group by its own length does that: the length is $\sqrt{G}$ times the group's root-mean-square, so after the division every group has the same $\sigma$, namely $1/\sqrt{G}$ per weight. One shared set of levels, made for that one $\sigma$, then serves every group, with nothing extra to store per group.[^note-6]
 
-<p>To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced. The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16:</p>
+[^note-6]: A side benefit is speed. A 4-bit codebook has only 16 entries, which fit in one CPU register, so many weights can be looked up at once (step 4). Speed is not why the codebook exists: the aim of these steps is a smaller model.
+
+Putting it together, the step does this:
+
+- Divide each group by its length, which is stored as the group's scale. What is left is a direction, so every group is on the same footing.
+- The levels come from [Lloyd's algorithm](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm) run on a Gaussian: dense near zero, where most values are, and sparse in the tails. That set is the codebook.[^note-7]
+- Each weight stores the 4-bit index of its nearest level.
+
+[^note-7]: Levels built for normally distributed weights are not unique to this project. The NF4 data type in [QLoRA](https://arxiv.org/abs/2305.14314) (Dettmers et al., 2023) is designed for zero-centred normal data too, but places its levels at quantiles of the normal distribution, so that each level serves the same expected number of values, rather than with Lloyd's algorithm.
+
+To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced. The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16:
 
 <figure class="widget wide" data-widget="lloyd">
   <figcaption><strong>Finding the levels with Lloyd's algorithm.</strong> Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got.</figcaption>
@@ -591,7 +601,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>Now the same idea on the two-weight groups from step 2. The length of each group is divided out, so the dots sit on a circle of length 1, and one grid is shared by every group:</p>
+Now the same idea on the two-weight groups from step 2. The length of each group is divided out, so the dots sit on a circle of length 1, and one grid is shared by every group:
 
 <figure class="widget wide" data-widget="rot2d" data-scene="step3" data-layers="strips points quant ghost curve" data-levels="fixed">
   <figcaption><strong>One fixed grid for every group.</strong> A group's scale is now its length, and its weights are what is left after dividing it out. The gold square is the one grid all groups share. It is sized here for a perfectly flat group, with both weights 0.71, while Whistle's grid is Gaussian-shaped and built for groups of 64. Rotate the groups and watch the arrows: they shrink for the triangles (the spiky first half) as those get flatter, and grow for the circles (the flat second half):</figcaption>
@@ -614,24 +624,32 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p id="step-4" data-toc="Step 4: never rebuild the weights"><strong>Step 4: never rebuild the weights.</strong> Steps 1 to 3 made the weights small. This step keeps them small while the model runs, and makes using them fast.</p>
-<ul>
-<li><strong>The problem:</strong> steps 2 and 3 store rotated, rounded weights. To use one you'd normally decode it: look up its level, multiply by the length, rotate back.</li>
-<li>Doing that for 135 million weights per word would be slow on a 2010 CPU, and it would rebuild the full-size weights we worked to avoid keeping.</li>
-<li><strong>The way out:</strong> a layer only needs dot products, and rotating both sides of a <a href="https://en.wikipedia.org/wiki/Dot_product">dot product</a> doesn't change it. So rotate the other side, the activations, instead, and never touch the weights.</li>
-</ul>
-<p>A layer computes dot products of the weights with the incoming numbers (the activations). Because the rotation \(H\) is orthogonal, rotating both sides leaves the dot product unchanged:</p>
-\[ \mathbf{w}\cdot\mathbf{x} \;=\; (H\mathbf{w})\cdot(H\mathbf{x}) \;\approx\; \ell\sum_k c_{\mathrm{idx}_k}\,(H\mathbf{x})_k \]
-<p>Here \(\mathbf{w}\) is a group of weights, \(\mathbf{x}\) the matching activations, \(\ell\) the group's length, \(c\) the codebook, and \(\mathrm{idx}_k\) the index stored for weight \(k\). The first equality is exact. The \(\approx\) is where the rounding enters: the stored level only approximates the \(k\)-th entry of \(H\mathbf{w}\), divided by \(\ell\).</p>
-<p>So in practice:</p>
-<ul>
-<li>The kernel rotates the <em>activations</em> once for each block of \(G\) of them and reuses the result for every row of the matrix: thousands of rows share one rotation.<span class="sidenote-wrap"><label for="sn-11" class="sidenote-number"></label><input type="checkbox" id="sn-11" class="sidenote-toggle"><span class="sidenote"><a href="https://arxiv.org/abs/2404.00456">QuaRot</a> splits its rotations the same way: most are folded into the weights ahead of time, and the rest are applied while the model runs, using the fast Walsh–Hadamard transform.</span></span></li>
-<li>The weights stay as indices.</li>
-<li>On the iPod's <a href="https://en.wikipedia.org/wiki/ARM_architecture_family#Advanced_SIMD_(Neon)">NEON</a> unit, one table-lookup instruction (<code>vtbl</code>) turns 8 indices into 8 small integer levels.</li>
-<li>Multiply-accumulate instructions then sum 8 or 16 products at a time.</li>
-</ul>
+## Step 4: never rebuild the weights
 
-<p>Here is the shortcut with actual numbers. Both routes give the same answer, but rotating the activations once is much cheaper when many rows share them:</p>
+Steps 1 to 3 made the weights small. This step keeps them small while the model runs, and makes using them fast.
+
+- **The problem:** steps 2 and 3 store rotated, rounded weights. To use one you'd normally decode it: look up its level, multiply by the length, rotate back.
+- Doing that for 135 million weights per word would be slow on a 2010 CPU, and it would rebuild the full-size weights we worked to avoid keeping.
+- **The way out:** a layer only needs dot products, and rotating both sides of a [dot product](https://en.wikipedia.org/wiki/Dot_product) doesn't change it. So rotate the other side, the activations, instead, and never touch the weights.
+
+A layer computes dot products of the weights with the incoming numbers (the activations). Because the rotation $H$ is orthogonal, rotating both sides leaves the dot product unchanged:
+
+$$
+\mathbf{w}\cdot\mathbf{x} \;=\; (H\mathbf{w})\cdot(H\mathbf{x}) \;\approx\; \ell\sum_k c_{\mathrm{idx}_k}\,(H\mathbf{x})_k
+$$
+
+Here $\mathbf{w}$ is a group of weights, $\mathbf{x}$ the matching activations, $\ell$ the group's length, $c$ the codebook, and $\mathrm{idx}_k$ the index stored for weight $k$. The first equality is exact. The $\approx$ is where the rounding enters: the stored level only approximates the $k$-th entry of $H\mathbf{w}$, divided by $\ell$.
+
+So in practice:
+
+- The kernel rotates the *activations* once for each block of $G$ of them and reuses the result for every row of the matrix: thousands of rows share one rotation.[^note-8]
+- The weights stay as indices.
+- On the iPod's [NEON](https://en.wikipedia.org/wiki/ARM_architecture_family#Advanced_SIMD_(Neon)) unit, one table-lookup instruction (`vtbl`) turns 8 indices into 8 small integer levels.
+- Multiply-accumulate instructions then sum 8 or 16 products at a time.
+
+[^note-8]: [QuaRot](https://arxiv.org/abs/2404.00456) splits its rotations the same way: most are folded into the weights ahead of time, and the rest are applied while the model runs, using the fast Walsh–Hadamard transform.
+
+Here is the shortcut with actual numbers. Both routes give the same answer, but rotating the activations once is much cheaper when many rows share them:
 
 <figure class="widget wide" data-widget="reuse">
   <figcaption><strong>Rotate the activations, not the weights.</strong> The top shows one group of 8 weights and the 8 activations they meet. The bottom counts the operations for groups of 64 when a matrix has many rows.</figcaption>
@@ -644,7 +662,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>The rotation itself is cheap thanks to the <a href="https://en.wikipedia.org/wiki/Fast_Walsh%E2%80%93Hadamard_transform">fast Walsh–Hadamard transform</a>. Because the matrix is built by doubling, it can be applied in \(\log_2 n\) rounds of add-and-subtract on pairs, the same <a href="https://en.wikipedia.org/wiki/Butterfly_diagram">butterfly</a> pattern as the FFT, with no multiplications:</p>
+The rotation itself is cheap thanks to the [fast Walsh–Hadamard transform](https://en.wikipedia.org/wiki/Fast_Walsh%E2%80%93Hadamard_transform). Because the matrix is built by doubling, it can be applied in $\log_2 n$ rounds of add-and-subtract on pairs, the same [butterfly](https://en.wikipedia.org/wiki/Butterfly_diagram) pattern as the FFT, with no multiplications:
 
 <figure class="widget wide" data-widget="fwht">
   <figcaption><strong>The fast transform on 8 numbers.</strong> Each round replaces pairs (a, b) with (a + b, a − b). Step through the rounds.</figcaption>
@@ -653,7 +671,9 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p id="stock" data-toc="Taking stock: what the steps buy"><strong>Taking stock: what the steps buy, and what they cost.</strong> All four steps are in place. Here is the whole pipeline on one group, then its gains and its price:</p>
+## Taking stock: what the steps buy, and what they cost
+
+All four steps are in place. Here is the whole pipeline on one group, then its gains and its price:
 
 <figure class="widget wide" data-widget="cq">
   <figcaption><strong>Quantizing one group of 32 weights.</strong> Dots are the values to store, ticks the available levels, and lines show where each value rounds to. Turn rotation and the codebook off to compare with plain evenly spaced levels; the average over 500 random groups is the number to watch.</figcaption>
@@ -668,32 +688,30 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p>What rotation and the codebook buy, measured on random groups of 64 and on SmolLM2's real layers:</p>
-<ul>
-<li><strong>Rotation</strong> is the big win when a group has outliers. For heavy-tailed groups it halves the error at 4 bits (18% → 9%) and cuts it from 86% to 36% at 2 bits.</li>
-<li><strong>The Gaussian codebook</strong> adds a little on top, mostly at 2 bits (36% → 33%). SmolLM2's real layers are closer to Gaussian already: at 2 bits the codebook takes their error from about 40% to 34%; at 4 bits every method lands near 10%.</li>
-<li>So at 4 bits most of the measured quality gain for SmolLM2 came from GPTQ (next), and the format's other strength is speed, which is step 4.</li>
-</ul>
+What rotation and the codebook buy, measured on random groups of 64 and on SmolLM2's real layers:
 
-<p>What it costs to store:</p>
-<ul>
-<li>A group of 64 weights takes \(64\times 4\) bits plus one 32-bit length, which is \(\dfrac{64\times 4 + 32}{64} = 4.5\) bits per weight on average, because the one length is shared by all 64.<span class="sidenote-wrap"><label for="sn-10" class="sidenote-number"></label><input type="checkbox" id="sn-10" class="sidenote-toggle"><span class="sidenote">QLoRA (see above) has the same overhead: with 32-bit constants and blocks of 64 it pays 32/64 = 0.5 bits per parameter, and its "double quantization" shrinks that to about 0.127 by quantizing the constants as well.</span></span></li>
-<li>SmolLM2 went from 538 MB to 76 MB.</li>
-<li>Whistle is 16.9 MB.</li>
-</ul>
+- **Rotation** is the big win when a group has outliers. For heavy-tailed groups it halves the error at 4 bits (18% → 9%) and cuts it from 86% to 36% at 2 bits.
+- **The Gaussian codebook** adds a little on top, mostly at 2 bits (36% → 33%). SmolLM2's real layers are closer to Gaussian already: at 2 bits the codebook takes their error from about 40% to 34%; at 4 bits every method lands near 10%.
+- So at 4 bits most of the measured quality gain for SmolLM2 came from GPTQ (next), and the format's other strength is speed, which is step 4.
 
-<p>The shared parts are almost free: the codebook is 16 numbers, 64 bytes for the whole model, and the Hadamard matrix costs nothing, because the doubling rule generates it. The alternatives that step 3 ruled out are not. Per weight, for groups of 64 and 32-bit numbers:</p>
-<div class="wide"><table>
-<thead><tr><th>What is stored</th><th class="num">Bits per weight</th><th class="num">SmolLM2</th></tr></thead>
-<tbody>
-<tr><td>32-bit floats, for reference</td><td class="num">32</td><td class="num">538 MB</td></tr>
-<tr><td><strong>What we do:</strong> 4-bit indices, one scale per group, one Hadamard matrix and one codebook for everything</td><td class="num">4.5</td><td class="num">76 MB</td></tr>
-<tr><td>A fresh 16-level codebook for every group instead of the shared one (it replaces the scale: 16 numbers instead of 1)</td><td class="num">12</td><td class="num">202 MB</td></tr>
-<tr><td>A different dense random rotation for every group, instead of the Hadamard matrix (\(64\times 64\) numbers each)</td><td class="num">about 2,050</td><td class="num">about 34 GB</td></tr>
-</tbody>
-</table></div>
+What it costs to store:
 
-<p>Other choices cost other amounts. Try a few and compare with the iPod's 256 MB of RAM:</p>
+- A group of 64 weights takes $64\times 4$ bits plus one 32-bit length, which is $\dfrac{64\times 4 + 32}{64} = 4.5$ bits per weight on average, because the one length is shared by all 64.[^note-9]
+- SmolLM2 went from 538 MB to 76 MB.
+- Whistle is 16.9 MB.
+
+[^note-9]: QLoRA (see above) has the same overhead: with 32-bit constants and blocks of 64 it pays 32/64 = 0.5 bits per parameter, and its "double quantization" shrinks that to about 0.127 by quantizing the constants as well.
+
+The shared parts are almost free: the codebook is 16 numbers, 64 bytes for the whole model, and the Hadamard matrix costs nothing, because the doubling rule generates it. The alternatives that step 3 ruled out are not. Per weight, for groups of 64 and 32-bit numbers:
+
+| What is stored | Bits per weight | SmolLM2 |
+| --- | ---: | ---: |
+| 32-bit floats, for reference | 32 | 538 MB |
+| **What we do:** 4-bit indices, one scale per group, one Hadamard matrix and one codebook for everything | 4.5 | 76 MB |
+| A fresh 16-level codebook for every group instead of the shared one (it replaces the scale: 16 numbers instead of 1) | 12 | 202 MB |
+| A different dense random rotation for every group, instead of the Hadamard matrix ($64\times 64$ numbers each) | about 2,050 | about 34 GB |
+
+Other choices cost other amounts. Try a few and compare with the iPod's 256 MB of RAM:
 
 <figure class="widget wide" data-widget="sizecalc">
   <figcaption><strong>What a model costs to store.</strong> 134.5 million weights, each taking a number of bits, plus one 32-bit scale for every group.</figcaption>
@@ -705,21 +723,20 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
-<p id="gptq" data-toc="Rounding smarter: GPTQ"><strong>Rounding smarter: GPTQ.</strong> One more refinement is for SmolLM2 only. It changes only which level each weight rounds to, so the stored format and the kernel stay the same.</p>
-<ul>
-<li>Rounding each weight to its nearest level is the simplest choice, but not the best one: the errors of neighbouring weights can add up or cancel out.</li>
-<li><a href="https://arxiv.org/abs/2210.17323">GPTQ</a> rounds the weights one at a time and nudges the not-yet-rounded ones to compensate, using statistics of real activations (here, from 40 chat questions).</li>
-<li>It ran on the Mac in a minute, in the rotated domain, with one GPTQ block per group.</li>
-</ul>
-<p><a href="https://en.wikipedia.org/wiki/Perplexity">Perplexity</a> on held-out chats, where lower is better:</p>
+## Rounding smarter: GPTQ
 
-<div class="wide"><table>
-<thead><tr><th>SmolLM2-135M stored as</th><th class="num">Size</th><th class="num">Perplexity</th></tr></thead>
-<tbody>
-<tr><td>32-bit floats</td><td class="num">538 MB</td><td class="num">7.2</td></tr>
-<tr><td>Before: evenly spaced 4-bit layers, 8-bit embedding</td><td class="num">98 MB</td><td class="num">10.1</td></tr>
-<tr><td>4-bit codebook, nearest level</td><td class="num">76 MB</td><td class="num">9.6</td></tr>
-<tr><td>4-bit codebook, GPTQ rounding</td><td class="num">76 MB</td><td class="num">8.1–8.9</td></tr>
-<tr><td>3-bit codebook</td><td class="num">59–66 MB</td><td class="num">29–81, unusable</td></tr>
-</tbody>
-</table></div>
+One more refinement is for SmolLM2 only. It changes only which level each weight rounds to, so the stored format and the kernel stay the same.
+
+- Rounding each weight to its nearest level is the simplest choice, but not the best one: the errors of neighbouring weights can add up or cancel out.
+- [GPTQ](https://arxiv.org/abs/2210.17323) rounds the weights one at a time and nudges the not-yet-rounded ones to compensate, using statistics of real activations (here, from 40 chat questions).
+- It ran on the Mac in a minute, in the rotated domain, with one GPTQ block per group.
+
+[Perplexity](https://en.wikipedia.org/wiki/Perplexity) on held-out chats, where lower is better:
+
+| SmolLM2-135M stored as | Size | Perplexity |
+| --- | ---: | ---: |
+| 32-bit floats | 538 MB | 7.2 |
+| Before: evenly spaced 4-bit layers, 8-bit embedding | 98 MB | 10.1 |
+| 4-bit codebook, nearest level | 76 MB | 9.6 |
+| 4-bit codebook, GPTQ rounding | 76 MB | 8.1–8.9 |
+| 3-bit codebook | 59–66 MB | 29–81, unusable |
