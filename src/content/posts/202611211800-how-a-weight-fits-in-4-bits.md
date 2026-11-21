@@ -160,7 +160,7 @@ description: Codebook quantization, step by step, with live figures.
 <li>A point on the diagonal has two equal weights, which is as flat as it gets: the square is smaller and the grid finer.</li>
 </ul>
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail">
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail" data-toggles="squares:Squares;grid:Grid points;start:Real weights (start);trail:Trails;end:Stored positions (end);bits:Binary labels">
   <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each of the 16 grid points is a possible stored value. Each solid marker sits where its group is stored, with a trail of shadows behind it back to the group's real weights, and the label next to it gives that stored value, the two level numbers in binary (2 bits per weight). The selected group's levels are numbered along its square. Click a marker to select a group and make its square and outline thicker.</figcaption>
   <div class="sx-controls"><button data-act="replay">replay the movement</button></div>
   <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels and the grid, each drawn where it is stored, with a trail of fading shadows back to its real weights"></svg>
@@ -171,7 +171,7 @@ description: Codebook quantization, step by step, with live figures.
 
 <p>Now rotate the groups. The two curves show, at every angle, the largest weight as a share of the group's length, averaged over the groups with an outlier (gold) and over the groups without (blue). Lower is flatter, and the rounding error follows it. The camera switch changes the viewpoint: off, the camera stays with the axes and the points move; on, it stays with the points, and the axes and squares turn the other way.</p>
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve">
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
   <figcaption><strong>Rotating groups of two weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored.</figcaption>
   <div class="sx-rowlabel sx-block">Rotation</div>
   <div class="sx-controls">
@@ -181,6 +181,9 @@ description: Codebook quantization, step by step, with live figures.
   </div>
   <svg class="sx-r2" viewBox="0 0 640 300" role="img" aria-label="Groups as points with their squares of levels, and a curve of average spikiness against rotation angle"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+  <p class="sx-cap2">And here is how much each group loses to rounding at the current angle, split into groups with an outlier and the rest. Turn the angle and watch the two rows move:</p>
+  <svg class="sx-ol" data-v="loss" viewBox="0 0 640 200" role="img" aria-label="Rounding error of each group at the current angle, split into groups that contain an outlier and groups that do not"></svg>
+  <p class="sx-note" data-v="lossnote" aria-live="polite">&nbsp;</p>
   <p class="sx-note">The rotation slider is only an animation: in practice a rotation is applied once, all at once.</p>
 </figure>
 
