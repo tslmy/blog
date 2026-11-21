@@ -127,22 +127,23 @@ description: Codebook quantization, step by step, with live figures.
 </ul>
 
 <figure class="widget wide" data-widget="rot2d">
-  <figcaption><strong>Rotating groups of two weights.</strong> Each dot is one group of two weights, drawn as a point on a circle of length 1 (the group's length is divided out, as in step 1). Hollow dots mark where the groups started, and filled dots are where the rotation has taken them. First, make up some groups:</figcaption>
+  <figcaption><strong>Rotating groups of two weights.</strong> Each dot is one group of two weights, drawn as a point on a circle of length 1 (the group's length is divided out, as in step 1), and each group has its own color. Hollow dots mark where the groups started, and filled dots are where the rotation has taken them. First, make up some groups:</figcaption>
   <div class="sx-rowlabel sx-block">Mock groups</div>
   <div class="sx-opts">
     <button data-at="axes" aria-pressed="true"><strong>One big weight each</strong><span>A big weight and a small one, so a group starts near an axis.</span></button>
     <button data-at="diag" aria-pressed="false"><strong>Two similar weights each</strong><span>Two weights of about the same size, so a group starts near a diagonal.</span></button>
   </div>
   <div class="sx-controls">
+    <label>Number of groups <input type="range" min="1" max="8" step="1" value="3" data-k="n"> <output data-o="n"></output></label>
     <label>Spiky groups <input type="range" min="0" max="100" step="1" value="100" data-k="sp"> <output data-o="sp"></output></label>
     <button data-act="new">new points</button>
   </div>
   <p class="sx-hint">How tightly the groups hug their starting place: at 100% every group is within 10° of it, and at 0% the directions are spread evenly round the circle.</p>
-  <p class="sx-cap2">The gold square marks the range of the levels, 4 per axis (2 bits). The small grey dots are the 16 values a group can be stored as: each of its two coordinates is rounded to the nearest level, and the red line shows where the selected group lands. Choose how the levels are placed:</p>
+  <p class="sx-cap2">A square marks the range of a group's levels, 4 per axis (2 bits). The small dots inside it are the 16 values that group can be stored as: each of its two coordinates is rounded to the nearest level, and a line in the group's color shows where it lands. Groups that are alike have nearly the same square, so they can lie on top of each other: a colored chip above each square's top-left corner counts them, and rotating pulls them apart. Click a dot to see its numbers below. Choose how the levels are placed:</p>
   <div class="sx-rowlabel sx-block">Levels</div>
   <div class="sx-opts">
-    <button data-mode="plain" aria-pressed="true"><strong>Reach each group's largest weight</strong><span>Step 1: every group has its own scale. Its square is redrawn to just reach its largest coordinate, with the evenly spaced levels of plain quantization.</span></button>
-    <button data-mode="fixed" aria-pressed="false"><strong>One fixed grid for all groups</strong><span>Step 3's idea: the length is divided out and one grid is shared by every group, here sized for a perfectly flat group (both coordinates 0.71). Whistle's grid is fixed too, but Gaussian-shaped and built for groups of 64.</span></button>
+    <button data-mode="plain" aria-pressed="true"><strong>Reach each group's largest weight</strong><span>Step 1: every group has its own scale, so each gets its own square in its own color, drawn to just reach its largest coordinate, with the evenly spaced levels of plain quantization.</span></button>
+    <button data-mode="fixed" aria-pressed="false"><strong>One fixed grid for all groups</strong><span>Step 3's idea: the length is divided out and one grid (a single gold square) is shared by every group, here sized for a perfectly flat group (both coordinates 0.71). Whistle's grid is fixed too, but Gaussian-shaped and built for groups of 64.</span></button>
   </div>
   <p class="sx-cap2">The curve shows, at every angle, the largest weight as a share of the group's length, averaged over the dots. Lower is flatter, and the rounding error follows it. The gold line marks 45°, the 2×2 Hadamard matrix. Now rotate:</p>
   <div class="sx-rowlabel sx-block">Rotation</div>
