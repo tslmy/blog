@@ -61,14 +61,14 @@ description: Codebook quantization, step by step, with live figures.
 <p>To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 columns. Slide the number of groups per row up from one (a single scale for the whole row) and watch the rounding error. Here the 16 levels are spread evenly up to the largest weight in each group, the plain scheme from the figure above:</p>
 
 <figure class="widget wide" data-widget="grouping">
-  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). Black lines are group boundaries, and each group gets its own scale. Click a row to see its scales below the matrix and its rounding error underneath. Turn the outliers off to see how much of the effect they cause.</figcaption>
+  <figcaption><strong>Why weights are grouped.</strong> Each cell is one weight (blue negative, red positive). White lines are group boundaries within each row, and each group gets its own scale. Click a row to see its scales below the matrix and its rounding error underneath. Turn the outliers off to see how much of the effect they cause.</figcaption>
   <div class="sx-controls">
     <label>Groups per row <input type="range" min="0" max="4" step="1" value="0" data-k="g"> <output data-o="g"></output></label>
     <label><input type="checkbox" checked data-k="out"> outliers</label>
     <button data-act="new">New matrix</button>
   </div>
   <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and one scale bar per group for the selected row"></svg>
-  <p class="sx-gcap">Bars: the scale of each group in the selected row, which is its largest weight (also printed on the bar). A gold bar means the group contains an outlier, which is marked with a gold outline in both matrices.</p>
+  <p class="sx-gcap">The number on each run of cells is that group's scale, its largest weight, and white lines separate the groups within each row. Every row has its own groups and scales. The bars show the scales of the selected row. A gold bar means the group contains an outlier, which is marked with a gold outline in both matrices.</p>
   <p class="sx-note" data-v="info" aria-live="polite">&nbsp;</p>
   <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
   <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmap of the rounding error of each weight"></svg>
