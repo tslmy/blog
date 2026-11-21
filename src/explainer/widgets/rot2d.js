@@ -4,6 +4,7 @@ import { matrixCells, matrixGroups } from '../core/matrix.js';
 import { groupColor, marker, markerDy, numberedMarker } from '../core/groupstyle.js';
 import { mean, pct0 } from '../core/stats.js';
 import { countLabel, lossStrips, spikyVsFlat } from '../core/strips.js';
+import { choice, toggleRow } from '../core/controls.js';
 
 // 6-. Groups of two weights, in stages. Figures with the same data-scene share their mock groups (and the levels option); data-layers says what each one draws:
 // strips (three lines of cells), points, quant (squares, grids, arrows and rings), bits (binary labels), ghost (where the groups started), curve (spikiness against angle), loss (how much each group loses).
@@ -19,11 +20,11 @@ const groupsOf = (sc) => {
   return Array.from({ length: n }, (_, i) => { const t = n > 1 ? i / (n - 1) : 0, a = 45 * t * Math.PI / 180; return { dir: [Math.cos(a), Math.sin(a)], len: .35 + t, spiky: i < half }; });
 };
 export default (fig) => {
+  let v = () => true;         // is this element of the plot switched on? set once the row of toggles exists
   const had = fig.hasAttribute('data-had'), layers = (fig.dataset.layers || 'points').split(/\s+/), has = (l) => layers.includes(l);
   const sc = scenes[fig.dataset.scene || 'main'] || (scenes[fig.dataset.scene || 'main'] = { st: { n: 4, mode: 'plain' }, subs: [], groups: fig.dataset.groups || 'ramp' });
   if (fig.dataset.levels) sc.st.mode = fig.dataset.levels;      // a figure can fix the levels option: "fixed" is step 3's one shared grid
   const rot = { deg: 0, sel: 0, follow: false };      // per figure: only the rotation figures turn the groups
-  const vis = {}, v = (k) => vis[k] !== false;         // which elements are shown: switched from the row of toggles above the plot
   const anim = { a: 1, raf: 0 }, ease = (t) => (t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);     // how far a trail figure's groups have moved, 0 to 1
   const play = () => {                                // slide the groups from their real weights to where they are stored
     cancelAnimationFrame(anim.raf);
@@ -158,15 +159,11 @@ export default (fig) => {
       box.replaceChildren(lab('rotation by this angle'), tbl([[c, -sn], [sn, c]]), lab('Hadamard matrix'), tbl([[h, h], [h, -h]]), lab(rot.deg === 45 ? 'At 45° the rotation has the same entries as the Hadamard matrix, with its two rows swapped.' : ''));
     }
   };
-  if (fig.dataset.toggles && svg) {                   // a row of switches for the elements of the plot, e.g. data-toggles="squares:Squares;grid:Grid points"
-    const row = el('div', 'sx-controls'); row.append(el('span', 'sx-rowlabel', 'Show'));
-    fig.dataset.toggles.split(';').forEach((tok) => { const [k, label] = tok.split(':'), b = el('button', null, label); b.type = 'button'; b.setAttribute('aria-pressed', 'true'); b.addEventListener('click', () => { vis[k] = !v(k); b.setAttribute('aria-pressed', String(v(k))); draw(); }); row.append(b); });
-    svg.before(row);
-  }
+  v = toggleRow(fig, svg, () => draw());
   sc.subs.push(draw);
   // mock groups and levels: shared by every figure of the scene
   on('[data-k=n]', 'input', (e) => { sc.st.n = +e.target.value; $(fig, '[data-o=n]').textContent = sc.st.n; everyone(); });
-  fig.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => { sc.st.mode = b.dataset.mode; fig.querySelectorAll('[data-mode]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); everyone(); }));
+  choice(fig, 'mode', (mode) => { sc.st.mode = mode; everyone(); });
   // rotation: per figure
   const set = (d) => { rot.deg = d; $(fig, '[data-k=deg]').value = d; $(fig, '[data-o=deg]').textContent = d + '°'; draw(); };
   on('[data-k=deg]', 'input', (e) => set(+e.target.value));

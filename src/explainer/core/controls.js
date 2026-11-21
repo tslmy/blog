@@ -1,3 +1,4 @@
+import { el } from './dom.js';
 import { nextSeed } from './random.js';
 
 // Reads and wires the range sliders of a figure. Every <input type=range data-k="name"> shows its value in the
@@ -30,4 +31,33 @@ export const switches = (fig, onChange) => {
 export const reseedable = (fig, seed, onNew) => {
   fig.querySelector('[data-act=new]')?.addEventListener('click', () => { seed = nextSeed(seed); onNew(); });
   return () => seed;
+};
+
+// A pick-one group: the buttons carrying data-<attr> are the alternatives, the chosen one has aria-pressed. The returned
+// object's `value` is the current choice (the page's pressed one at first), and `onChange(value)` runs when it changes.
+export const choice = (fig, attr, onChange) => {
+  const buttons = [...fig.querySelectorAll(`[data-${attr}]`)];
+  const state = { value: buttons.find((b) => b.getAttribute('aria-pressed') === 'true')?.dataset[attr] };
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    state.value = b.dataset[attr];
+    buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    onChange(state.value);
+  }));
+  return state;
+};
+
+// A row of switches above a plot, one for each element it can show, from data-toggles="key:Label;key:Label". Returns `shown(key)`.
+export const toggleRow = (fig, before, onChange) => {
+  const shown = {};
+  if (fig.dataset.toggles && before) {
+    const row = el('div', 'sx-controls'); row.append(el('span', 'sx-rowlabel', 'Show'));
+    fig.dataset.toggles.split(';').forEach((tok) => {
+      const [key, label] = tok.split(':'), button = el('button', null, label);
+      button.type = 'button'; button.setAttribute('aria-pressed', 'true');
+      button.addEventListener('click', () => { shown[key] = shown[key] === false; button.setAttribute('aria-pressed', String(shown[key])); onChange(); });
+      row.append(button);
+    });
+    before.before(row);
+  }
+  return (key) => shown[key] !== false;
 };

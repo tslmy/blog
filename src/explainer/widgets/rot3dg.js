@@ -5,6 +5,7 @@ import { spin } from '../core/spin.js';
 import { groupColor, marker, markerDy, numberedMarker } from '../core/groupstyle.js';
 import { mean, pct0 } from '../core/stats.js';
 import { countLabel, lossStrips, spikyVsFlat } from '../core/strips.js';
+import { toggleRow } from '../core/controls.js';
 
 // 6a. Groups of three weights: the two-weight figures in 3D. Figures with the same data-scene share their groups; data-layers says what each draws:
 // strips, points, quant (cubes, grids, rings and arrows), ghost (where the groups started), curve (spikiness against angle), loss (how much each group loses).
@@ -19,9 +20,10 @@ const groups3 = (n) => Array.from({ length: n }, (_, i) => { const t = n > 1 ? i
 const turn3 = (v, deg) => rodr(v, DIAG3, deg * Math.PI / 180);
 const quant3 = (p) => { const m = Math.max(...p.map(Math.abs)), st = 2 * m / 3, ix = p.map((x) => Math.max(0, Math.min(3, Math.round((x + m) / st)))), q = ix.map((k) => -m + k * st); return { m, q, ix, err: Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) / Math.hypot(...p) }; };
 export default (fig) => {
+  let v = () => true;         // is this element of the plot switched on? set once the row of toggles exists
   const layers = (fig.dataset.layers || 'points').split(/\s+/), has = (l) => layers.includes(l);
   const sc = scenes3[fig.dataset.scene || 'three'] || (scenes3[fig.dataset.scene || 'three'] = { st: { n: 4 }, subs: [] });
-  const rot = { deg: 0, sel: 0, follow: false }, view = { yaw: -.6, pitch: .4 }, vis = {}, v = (k) => vis[k] !== false;
+  const rot = { deg: 0, sel: 0, follow: false }, view = { yaw: -.6, pitch: .4 };
   const CX = 190, CY = 170, S = 100, GOLD = 'var(--sx-gold)', BLUE = 'var(--sx-blue)';
   const svg = $(fig, 'svg.sx-r3g'), note = $(fig, '.sx-readout');
   const on = (sel, ev, fn) => { const e = $(fig, sel); if (e) e.addEventListener(ev, fn); };
@@ -107,11 +109,7 @@ export default (fig) => {
     }
   };
   const everyone = () => sc.subs.forEach((f) => f());
-  if (fig.dataset.toggles && svg) {                  // a row of switches for the elements of the plot
-    const row = el('div', 'sx-controls'); row.append(el('span', 'sx-rowlabel', 'Show'));
-    fig.dataset.toggles.split(';').forEach((tok) => { const [k, label] = tok.split(':'), b = el('button', null, label); b.type = 'button'; b.setAttribute('aria-pressed', 'true'); b.addEventListener('click', () => { vis[k] = !v(k); b.setAttribute('aria-pressed', String(v(k))); draw(); }); row.append(b); });
-    svg.before(row);
-  }
+  v = toggleRow(fig, svg, () => draw());
   sc.subs.push(draw);
   on('[data-k=n]', 'input', (e) => { sc.st.n = +e.target.value; $(fig, '[data-o=n]').textContent = sc.st.n; everyone(); });
   const set = (d) => { rot.deg = d; $(fig, '[data-k=deg]').value = d; $(fig, '[data-o=deg]').textContent = d + '°'; draw(); };

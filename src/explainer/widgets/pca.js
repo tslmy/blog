@@ -1,15 +1,16 @@
 import { $, sv } from '../core/dom.js';
 import { fwht, jacobi } from '../core/linalg.js';
 import { gauss, rng } from '../core/random.js';
-import { reseedable } from '../core/controls.js';
+import { choice, reseedable } from '../core/controls.js';
 
 // 6b. PCA versus the Hadamard rotation on the same groups of 8 weights
 export default (fig) => {
-  const M = 24, D = 8, CLIP = 4, state = { ds: 'spiky' }, seed = reseedable(fig, 3, () => draw());
+  const M = 24, D = 8, CLIP = 4, seed = reseedable(fig, 3, () => draw());
+  const ds = choice(fig, 'ds', () => draw());
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const data = () => {
     const r = rng(seed()), g = () => gauss(r);
-    if (state.ds === 'spiky') return Array.from({ length: M }, () => { const row = Array.from({ length: D }, () => .35 * g()); row[Math.floor(r() * D)] += (r() < .5 ? -1 : 1) * (3.5 + .6 * g()); return row; });
+    if (ds.value === 'spiky') return Array.from({ length: M }, () => { const row = Array.from({ length: D }, () => .35 * g()); row[Math.floor(r() * D)] += (r() < .5 ? -1 : 1) * (3.5 + .6 * g()); return row; });
     const u = Array.from({ length: D }, g), l = Math.hypot(...u), uu = u.map((x) => x / l);
     return Array.from({ length: M }, () => { const a = g(); return uu.map((x) => 3.2 * a * x + .45 * g()); });
   };
@@ -36,10 +37,9 @@ export default (fig) => {
       [`busiest coordinate: ${(Math.max(...st.cols) * 100).toFixed(0)}% of the energy`, `largest weight: ${(st.spike * 100).toFixed(0)}% of its group's length`, `2-bit rounding error: ${(st.err * 100).toFixed(0)}%`].forEach((txt, i) => { const tx = sv('text', { x: x0, y: by + i * 14, class: 'lbl' }); tx.textContent = txt; kids.push(tx); });
     });
     svg.replaceChildren(...kids);
-    note.textContent = state.ds === 'spiky'
+    note.textContent = ds.value === 'spiky'
       ? `Every group has one big weight in a random place, so no single direction stands out and PCA has little to find: the error only moves from ${(res[0].err * 100).toFixed(0)}% to ${(res[1].err * 100).toFixed(0)}%. A flattening rotation spreads each spike over all 8 coordinates (largest weight ${(res[0].spike * 100).toFixed(0)}% → ${(res[2].spike * 100).toFixed(0)}% of the length) and the error falls to ${(res[2].err * 100).toFixed(0)}%.`
       : `The weights share one direction. PCA finds it and moves nearly all the energy into the first coordinate (${(Math.max(...res[1].cols) * 100).toFixed(0)}%), which is ideal for dropping the other seven, but each group becomes one big weight plus noise: the error rises from ${(res[0].err * 100).toFixed(0)}% to ${(res[1].err * 100).toFixed(0)}%. A flattening rotation does not need to know the direction and spreads everything out.`;
   };
-  fig.querySelectorAll('[data-ds]').forEach((b) => b.addEventListener('click', () => { state.ds = b.dataset.ds; fig.querySelectorAll('[data-ds]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); }));
   draw();
 };

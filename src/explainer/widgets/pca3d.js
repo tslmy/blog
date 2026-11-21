@@ -2,11 +2,12 @@ import { $, sv } from '../core/dom.js';
 import { jacobi } from '../core/linalg.js';
 import { spin } from '../core/spin.js';
 import { gauss, rng } from '../core/random.js';
-import { ranges, reseedable } from '../core/controls.js';
+import { choice, ranges, reseedable } from '../core/controls.js';
 
 // 6c. PCA versus a flattening rotation on a 3D cloud
 export default (fig) => {
-  const N = 60, S = 92, CX = 320, CY = 168, state = { ds: 'axes', rot: 'pca', yaw: -0.6, pitch: 0.4 }, seed = reseedable(fig, 9, () => rebuild()), ctl = ranges(fig, () => draw(), { t: (v) => v + '%' });
+  const N = 60, S = 92, CX = 320, CY = 168, state = { yaw: -0.6, pitch: 0.4 }, seed = reseedable(fig, 9, () => rebuild()), ctl = ranges(fig, () => draw(), { t: (v) => v + '%' });
+  const ds = choice(fig, 'ds', () => rebuild()), rot = choice(fig, 'rot', () => draw());
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
   const rodrigues = (v, ax, ang) => { const c = Math.cos(ang), s = Math.sin(ang), d = ax[0] * v[0] + ax[1] * v[1] + ax[2] * v[2], cr = cross(ax, v); return [0, 1, 2].map((i) => v[i] * c + cr[i] * s + ax[i] * d * (1 - c)); };
@@ -23,13 +24,13 @@ export default (fig) => {
   let pts = [], pc = null;
   const gen = () => {
     const r = rng(seed()), g = () => gauss(r);
-    if (state.ds === 'axes') pts = Array.from({ length: N }, () => { const p = [.07 * g(), .07 * g(), .07 * g()]; p[Math.floor(r() * 3)] += (r() < .5 ? -1 : 1) * (.9 + .12 * g()); return p; });
+    if (ds.value === 'axes') pts = Array.from({ length: N }, () => { const p = [.07 * g(), .07 * g(), .07 * g()]; p[Math.floor(r() * 3)] += (r() < .5 ? -1 : 1) * (.9 + .12 * g()); return p; });
     else { const d = [.8, .45, .35], l = Math.hypot(...d); pts = Array.from({ length: N }, () => { const a = .65 * g(); return d.map((x) => a * x / l + .12 * g()); }); }
     const C = [0, 1, 2].map((i) => [0, 1, 2].map((j) => pts.reduce((a, p) => a + p[i] * p[j], 0) / N)), { vecs, vals } = jacobi(C);
     if (cross(vecs[0], vecs[1]).reduce((a, x, i) => a + x * vecs[2][i], 0) < 0) vecs[2] = vecs[2].map((x) => -x);   // keep a proper rotation
     pc = { vecs, vals, ...quat(vecs) };               // rows of the rotation are the principal axes
   };
-  const turn = (p) => state.rot === 'pca' ? rodrigues(p, pc.ax, pc.ang * ctl.t / 100) : rodrigues(p, [1 / Math.sqrt(3), 1 / Math.sqrt(3), 1 / Math.sqrt(3)], (Math.PI / 3) * ctl.t / 100);
+  const turn = (p) => rot.value === 'pca' ? rodrigues(p, pc.ax, pc.ang * ctl.t / 100) : rodrigues(p, [1 / Math.sqrt(3), 1 / Math.sqrt(3), 1 / Math.sqrt(3)], (Math.PI / 3) * ctl.t / 100);
   const proj = (p) => {
     const cy = Math.cos(state.yaw), sy = Math.sin(state.yaw), cp = Math.cos(state.pitch), sp = Math.sin(state.pitch), x1 = p[0] * cy - p[1] * sy, y1 = p[0] * sy + p[1] * cy;
     return [CX + S * x1, CY - S * (p[2] * cp + y1 * sp), y1 * cp - p[2] * sp];
@@ -43,18 +44,16 @@ export default (fig) => {
       kids.push(line([-x, -y, -z], [x, y, z], 'ax'));
       const [px, py] = proj([x * 1.07, y * 1.07, z * 1.07]), tx = sv('text', { x: px, y: py, class: 'lbl', 'text-anchor': 'middle' }); tx.textContent = t; kids.push(tx);
     });
-    if (state.rot === 'pca') pc.vecs.forEach((v, k) => { const L = 1.6 * Math.sqrt(pc.vals[k]) + .25, a = turn(v.map((x) => -x * L)), b = turn(v.map((x) => x * L)); kids.push(line(a, b, 'pax')); });
+    if (rot.value === 'pca') pc.vecs.forEach((v, k) => { const L = 1.6 * Math.sqrt(pc.vals[k]) + .25, a = turn(v.map((x) => -x * L)), b = turn(v.map((x) => x * L)); kids.push(line(a, b, 'pax')); });
     P.map((p, i) => ({ p, i, d: proj(p)[2] })).sort((a, b) => b.d - a.d).forEach(({ p, i }) => {
       const [x, y] = proj(p), t = Math.min(1, now.per[i] / .45);
       kids.push(sv('circle', { cx: x, cy: y, r: 3.6, style: `fill:color-mix(in srgb, var(--sx-red) ${t * 100}%, var(--sx-blue))` }));
     });
     svg.replaceChildren(...kids);
     const f = (a) => a.map((x) => (x * 100).toFixed(0) + '%').join(', ');
-    note.textContent = `${ctl.t}% of the ${state.rot === 'pca' ? 'PCA rotation' : 'flattening rotation'}. Average 2-bit rounding error: ${(now.err * 100).toFixed(0)}% (${(before.err * 100).toFixed(0)}% before rotating). Energy in the three coordinates: ${f(now.en)}.`;
+    note.textContent = `${ctl.t}% of the ${rot.value === 'pca' ? 'PCA rotation' : 'flattening rotation'}. Average 2-bit rounding error: ${(now.err * 100).toFixed(0)}% (${(before.err * 100).toFixed(0)}% before rotating). Energy in the three coordinates: ${f(now.en)}.`;
   };
   const rebuild = () => { gen(); draw(); };
-  fig.querySelectorAll('[data-ds]').forEach((b) => b.addEventListener('click', () => { state.ds = b.dataset.ds; fig.querySelectorAll('[data-ds]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); rebuild(); }));
-  fig.querySelectorAll('[data-rot]').forEach((b) => b.addEventListener('click', () => { state.rot = b.dataset.rot; fig.querySelectorAll('[data-rot]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); }));
   let drag = null;
   svg.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, yaw: state.yaw, pitch: state.pitch }; });
   window.addEventListener('pointermove', (e) => { if (!drag) return; state.yaw = drag.yaw + (e.clientX - drag.x) * 0.01; state.pitch = Math.max(0.05, Math.min(1.4, drag.pitch + (e.clientY - drag.y) * 0.01)); draw(); });

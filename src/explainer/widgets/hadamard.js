@@ -1,10 +1,11 @@
-import { $, el, press } from '../core/dom.js';
+import { $, el } from '../core/dom.js';
+import { choice } from '../core/controls.js';
 import { hadamard } from '../core/linalg.js';
 import { setMath } from '../core/math.js';
 
 // 6. Building a Walsh–Hadamard matrix by doubling
 export default (fig) => {
-  const box = $(fig, '.sx-had'), note = $(fig, '.sx-note'), buttons = [...fig.querySelectorAll('button')];
+  const box = $(fig, '.sx-had'), note = $(fig, '.sx-note');
   const draw = (n) => {
     const h = hadamard(n), grid = el('div', 'grid');
     grid.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
@@ -27,6 +28,6 @@ export default (fig) => {
       ? 'The 2×2 matrix: output 1 is the sum of the two inputs, output 2 their difference (each divided by \\(\\sqrt{2}\\)).'
       : `${n}×${n}: four copies of the ${n / 2}×${n / 2} matrix, the bottom-right one (outlined) with its signs flipped. Click a row.`);
   };
-  buttons.forEach((b) => b.addEventListener('click', () => { press(buttons, b); draw(+b.dataset.n); }));
+  choice(fig, 'n', (n) => draw(+n));
   draw(16);
 };
