@@ -46,15 +46,17 @@ export const choice = (fig, attr, onChange) => {
   return state;
 };
 
-// A row of switches above a plot, one for each element it can show, from data-toggles="key:Label;key:Label". Returns `shown(key)`.
+// A row of switches above a plot, one for each element it can show, from data-toggles="key:Label;key:Label:off" (a trailing
+// ":off" starts the switch off). Returns `shown(key)`.
 export const toggleRow = (fig, before, onChange) => {
   const shown = {};
   if (fig.dataset.toggles && before) {
     const row = el('div', 'sx-controls'); row.append(el('span', 'sx-rowlabel', 'Show'));
     fig.dataset.toggles.split(';').forEach((tok) => {
-      const [key, label] = tok.split(':'), button = el('button', null, label);
-      button.type = 'button'; button.setAttribute('aria-pressed', 'true');
-      button.addEventListener('click', () => { shown[key] = shown[key] === false; button.setAttribute('aria-pressed', String(shown[key])); onChange(); });
+      const [key, label, start] = tok.split(':'), button = el('button', null, label);
+      shown[key] = start !== 'off';
+      button.type = 'button'; button.setAttribute('aria-pressed', String(shown[key]));
+      button.addEventListener('click', () => { shown[key] = !shown[key]; button.setAttribute('aria-pressed', String(shown[key])); onChange(); });
       row.append(button);
     });
     before.before(row);

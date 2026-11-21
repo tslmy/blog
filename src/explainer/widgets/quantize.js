@@ -1,4 +1,4 @@
-import { $, el, sv, svgText } from '../core/dom.js';
+import { $, el, focusable, sv, svgText } from '../core/dom.js';
 import { mel, setMath } from '../core/math.js';
 import { ranges, reseedable, switches } from '../core/controls.js';
 import { gauss, rng } from '../core/random.js';
@@ -43,6 +43,7 @@ export default (fig) => {
       if (major) kids.push(svgText(X(v), 11, String(Number(v.toFixed(2))), 'middle', 'lbl'));
     }
     svg.replaceChildren(...kids);
+    focusable(svg, '.dot[data-i]', (e) => `Weight ${+e.dataset.i + 1}`);
     const relativeError = (vals, lv) => Math.sqrt(vals.reduce((a, x) => a + (x - lv[nearestIndex(lv, x)]) ** 2, 0) / vals.reduce((a, x) => a + x * x, 0));
     const e2 = w.reduce((a, x) => a + (x - nearest(x)) ** 2, 0), p2 = w.reduce((a, x) => a + x * x, 0);
     const ordinary = w.filter((x, i) => !(on.outlier && i === big)), plain = relativeError(ordinary, levels);

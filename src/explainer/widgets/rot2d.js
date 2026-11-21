@@ -1,10 +1,11 @@
 import { divColor, goldColor, redColor } from '../core/colors.js';
-import { $, el, sv, svgLine, svgText } from '../core/dom.js';
+import { $, el, focusable, sv, svgLine, svgText } from '../core/dom.js';
 import { matrixCells, matrixGroups } from '../core/matrix.js';
 import { groupColor, marker, markerDy, numberedMarker } from '../core/groupstyle.js';
 import { mean, pct0 } from '../core/stats.js';
 import { countLabel, lossStrips, spikyVsFlat } from '../core/strips.js';
 import { choice, toggleRow } from '../core/controls.js';
+import { fillTable } from '../core/table.js';
 
 // 6-. Groups of two weights, in stages. Figures with the same data-scene share their mock groups (and the levels option); data-layers says what each one draws:
 // strips (three lines of cells), points, quant (squares, grids, arrows and rings), bits (binary labels), ghost (where the groups started), curve (spikiness against angle), loss (how much each group loses).
@@ -46,9 +47,9 @@ export default (fig) => {
     const P = vecs(grp, md, rot.deg), P0 = vecs(grp, md, 0), Q = P.map((p) => quant(p, md));
     const tw = $(fig, '[data-v=tw]');
     if (tw) {                                          // three lines of cells at the cell size of the grouping figure, growing to the right: weights with their scales, the scales, the rounding errors
-      const CW2 = 10, RH2 = 11, BAND = 15, scl = Q.map((o, i) => (md === 'plain' ? o.m : grp[i].len)), smax = Math.max(...scl), line1 = { R: 1, C: 2 * N, CW: CW2, RH: RH2, gs: 2, rows: false };
+      const CW2 = Math.min(40, Math.floor(600 / (2 * N))), RH2 = Math.max(11, Math.round(CW2 * .55)), BAND = 15, R2 = Math.max(5.5, CW2 * .2), scl = Q.map((o, i) => (md === 'plain' ? o.m : grp[i].len)), smax = Math.max(...scl), line1 = { R: 1, C: 2 * N, CW: CW2, RH: RH2, gs: 2, rows: false };
       const w = (c) => P[c >> 1][c & 1], q = (c) => Q[c >> 1].q[c & 1];
-      const chips = P.flatMap((p, i) => { const g = marker(grp[i].spiky, (i + .5) * 2 * CW2, 7, 5.5, '', `fill:${col(i)}`), t = sv('text', { x: (i + .5) * 2 * CW2, y: 7.3 + (grp[i].spiky ? 1.5 : 0), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'gnum2' }); t.textContent = i + 1; return [g, t]; });
+      const chips = P.flatMap((p, i) => { const g = marker(grp[i].spiky, (i + .5) * 2 * CW2, 7, R2, '', `fill:${col(i)}`), t = sv('text', { x: (i + .5) * 2 * CW2, y: 7.3 + (grp[i].spiky ? 1.5 : 0), 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'gnum2' }); t.textContent = i + 1; return [g, t]; });
       const put = (svgEl, h, kids) => { svgEl.setAttribute('viewBox', `0 0 640 ${h}`); svgEl.replaceChildren(...kids); };
       const shifted = sv('g', { transform: `translate(0,${BAND})` }); shifted.append(...matrixCells({ ...line1, color: (r, c) => divColor(w(c), md === 'plain' ? 1.5 : 1), label: (r, g) => scl[g].toFixed(2) }));
       put(tw, BAND + RH2, [...chips, shifted]);
@@ -73,6 +74,7 @@ export default (fig) => {
     if (has('quant') && md === 'fixed') kids.push(sv('circle', { cx: CX, cy: CY, r: S, class: 'sph' }));
     kids.push(seg([-1.45, 0], [1.45, 0], 'ax'), seg([0, -1.45], [0, 1.45], 'ax'));
     { const [ax, ay] = pt(1.45, 0), [bx, by] = pt(0, 1.45); kids.push(svgText(ax + 4, ay + 4, 'w₁', 'start', 'lbl axl'), svgText(bx + 8, by + 12, 'w₂', 'start', 'lbl axl')); }
+    [-1, -.5, .5, 1].forEach((t) => { const [x, y] = pt(t, 0), [x2, y2] = pt(0, t), name = (t < 0 ? '−' : '') + Math.abs(t); kids.push(svgLine(x, y - 3, x, y + 3, 'ax'), svgText(x, y + 15, name, 'middle'), svgLine(x2 - 3, y2, x2 + 3, y2, 'ax'), svgText(x2 - 7, y2 + 4, name, 'end')); });   // numbered ticks on both axes
     if (has('quant')) {
       const square = (mm, style) => sv('polygon', { points: [[-mm, -mm], [mm, -mm], [mm, mm], [-mm, mm]].map(([x, y]) => pt(x, y).join(',')).join(' '), class: 'sq' }, style);
       const grid = (mm, style, r) => { for (let a = 0; a < 4; a++) for (let b = 0; b < 4; b++) { const [cx, cy] = pt(-mm + a * 2 * mm / 3, -mm + b * 2 * mm / 3); kids.push(sv('circle', { cx, cy, r, class: 'gd' }, style)); } };
@@ -147,10 +149,19 @@ export default (fig) => {
       kids.push(svgText(x0 - 40, y1 - 38, 'largest weight ÷ length (average)', 'start'), svgText((x0 + x1) / 2, y0 + (had ? 44 : 30), 'rotation angle', 'middle'));
     }
     svg.replaceChildren(...kids);
+    focusable(svg, '.pt[data-i]', (e) => `Group ${+e.dataset.i + 1}`);
     if (!note || !curves) return;
     const avgErr = (flag) => (d) => mean(grp.filter((g) => g.spiky === flag).map((g) => quant(turn2(g.dir, d).map((x) => x * (md === 'plain' ? g.len : 1)), md).err));
-    const set = (flag, name, c) => `${name}: largest weight ${pct0(c[rot.deg])} of the length (${pct0(c[0])} before${had ? `, ${pct0(c[45])} at 45°` : ''}), rounding error ${pct0(avgErr(flag)(rot.deg))} (${pct0(avgErr(flag)(0))} before${had ? `, ${pct0(avgErr(flag)(45))} at 45°` : ''})`;
-    note.textContent = `Rotated ${rot.deg}°. Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'}): (${sel[0].toFixed(2)}, ${sel[1].toFixed(2)}), largest weight ${pct0(Math.max(...sel.map(Math.abs)) / Math.hypot(...sel))} of its length, rounding error ${pct0(err)}. On average, ${set(true, cl ? 'spiky groups (triangles)' : 'first half (spiky, triangles)', curves.cW)}; ${set(false, cl ? 'flat groups (circles)' : 'second half (flat, circles)', curves.cO)}. ${md === 'plain' ? 'Each group has its own square, reaching its largest weight.' : 'Every group shares the one fixed grid.'}`;
+    const cell = (now, before, at45) => `${pct0(now)} (was ${pct0(before)}${had ? `, ${pct0(at45)} at 45°` : ''})`;
+    const kind = (flag, c) => [cell(c[rot.deg], c[0], c[45]), cell(avgErr(flag)(rot.deg), avgErr(flag)(0), avgErr(flag)(45))];
+    const g0 = P0[rot.sel], e0 = quant(g0, md).err, big = (p) => Math.max(...p.map(Math.abs)) / Math.hypot(...p);
+    let tbl = $(fig, '.sx-stat'); if (!tbl) { tbl = el('table', 'sx-stat'); note.replaceWith(tbl); }
+    fillTable(tbl, [
+      ['Average over', 'Largest weight ÷ length', 'Rounding error'],
+      [cl ? 'Spiky groups (triangles)' : 'First half (spiky, triangles)', ...kind(true, curves.cW)],
+      [cl ? 'Flat groups (circles)' : 'Second half (flat, circles)', ...kind(false, curves.cO)],
+      [`Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'}), at (${sel[0].toFixed(2)}, ${sel[1].toFixed(2)})`, `${pct0(big(sel))} (was ${pct0(big(g0))})`, `${pct0(err)} (was ${pct0(e0)})`],
+    ]);
     const box = $(fig, '.sx-mat');
     if (box) {
       const c = Math.cos(rot.deg * Math.PI / 180), sn = Math.sin(rot.deg * Math.PI / 180), h = Math.SQRT1_2;

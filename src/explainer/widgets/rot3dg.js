@@ -1,5 +1,6 @@
 import { divColor, goldColor, redColor } from '../core/colors.js';
-import { $, el, sv, svgText } from '../core/dom.js';
+import { $, el, focusable, sv, svgText } from '../core/dom.js';
+import { fillTable } from '../core/table.js';
 import { matrixCells, matrixGroups } from '../core/matrix.js';
 import { spin } from '../core/spin.js';
 import { groupColor, marker, markerDy, numberedMarker } from '../core/groupstyle.js';
@@ -96,10 +97,18 @@ export default (fig) => {
       kids.push(svgText(x0 - 40, y1 - 38, 'largest weight ÷ length (average)', 'start'), svgText((x0 + x1) / 2, y0 + 30, 'rotation angle', 'middle'));
     }
     svg.replaceChildren(...kids);
+    focusable(svg, '.pt[data-i]', (e) => `Group ${+e.dataset.i + 1}`);
     if (note && curves) {
       const avgErr = (flag) => (d) => mean(grp.filter((g) => g.spiky === flag).map((g) => quant3(turn3(g.dir.map((x) => x * g.len), d)).err));
-      const set = (flag, name, c) => `${name}: largest weight ${pct0(c[rot.deg])} of the length (${pct0(c[0])} before), rounding error ${pct0(avgErr(flag)(rot.deg))} (${pct0(avgErr(flag)(0))} before)`;
-      note.textContent = `Rotated ${rot.deg}°. Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'}): largest weight ${pct0(Math.max(...sel.map(Math.abs)) / Math.hypot(...sel))} of its length, rounding error ${pct0(err)}. On average, ${set(true, 'first half (spiky, triangles)', curves.cW)}; ${set(false, 'second half (flat, circles)', curves.cO)}.`;
+      const cell = (now, before) => `${pct0(now)} (was ${pct0(before)})`, big = (p) => Math.max(...p.map(Math.abs)) / Math.hypot(...p);
+      const kind = (flag, c) => [cell(c[rot.deg], c[0]), cell(avgErr(flag)(rot.deg), avgErr(flag)(0))];
+      let tbl = $(fig, '.sx-stat'); if (!tbl) { tbl = el('table', 'sx-stat'); note.replaceWith(tbl); }
+      fillTable(tbl, [
+        ['Average over', 'Largest weight ÷ length', 'Rounding error'],
+        ['First half (spiky, triangles)', ...kind(true, curves.cW)],
+        ['Second half (flat, circles)', ...kind(false, curves.cO)],
+        [`Group ${rot.sel + 1} (${grp[rot.sel].spiky ? 'spiky' : 'flat'})`, cell(big(sel), big(P0[rot.sel])), cell(err, quant3(P0[rot.sel]).err)],
+      ]);
     }
     const box = $(fig, '.sx-mat');
     if (box) {                                         // the rotation matrix at this angle: its columns are where the three axes go

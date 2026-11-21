@@ -28,23 +28,23 @@ const encode = (x, eb, mb) => {
 
 export default (fig) => {
   const tab = $(fig, '.sx-stat'), formula = $(fig, '.sx-formula'), note = $(fig, '.sx-note'), sign = $(fig, '[data-k=sign]');
-  let typed = null;                                           // the decimal the reader picked, until a slider for the stored values moves
+  let typed = null, M0 = 0;                                   // the decimal the reader picked, until a slider for the stored values moves; and the stored mantissa, which a coarse slider cannot always hit exactly
   const on = switches(fig, () => { typed = null; draw(); });
-  const ctl = ranges(fig, (k) => { if (k === 'eb' || k === 'mb') resize(); else typed = null; draw(); }, { m: fmt });
+  const ctl = ranges(fig, (k) => { if (k === 'eb' || k === 'mb') resize(); else { typed = null; if (k === 'm') M0 = ctl.m; } draw(); }, { m: fmt });
   const input = (k) => $(fig, `[data-k=${k}]`);
   const put = (k, v) => { input(k).value = v; input(k).dispatchEvent(new Event('input')); };
   const resize = () => {                                      // the stored values must fit the bits they now have
-    input('e').max = 2 ** ctl.eb - 2; input('m').max = 2 ** ctl.mb - 1;
+    input('e').max = 2 ** ctl.eb - 2; input('m').max = 2 ** ctl.mb - 1; input('m').step = Math.max(1, 2 ** (ctl.mb - 10));
     if (typed !== null) set(typed); else { put('e', Math.min(ctl.e, 2 ** ctl.eb - 2)); put('m', Math.min(ctl.m, 2 ** ctl.mb - 1)); }
   };
   const set = (x) => {
     const { s, e, m } = encode(x, ctl.eb, ctl.mb);
     on.sign = !!s; sign.setAttribute('aria-pressed', String(!!s));
-    input('e').max = 2 ** ctl.eb - 2; input('m').max = 2 ** ctl.mb - 1;
-    put('e', e); put('m', m); typed = x; draw();
+    input('e').max = 2 ** ctl.eb - 2; input('m').max = 2 ** ctl.mb - 1; input('m').step = Math.max(1, 2 ** (ctl.mb - 10));
+    put('e', e); put('m', m); M0 = m; typed = x; draw();
   };
   const draw = () => {
-    const { eb, mb } = ctl, s = on.sign ? 1 : 0, E = Math.min(ctl.e, 2 ** eb - 2), M = Math.min(ctl.m, 2 ** mb - 1);
+    const { eb, mb } = ctl, s = on.sign ? 1 : 0, E = Math.min(ctl.e, 2 ** eb - 2), M = Math.min(M0, 2 ** mb - 1);
     const bias = 2 ** (eb - 1) - 1, sub = E === 0, power = sub ? 1 - bias : E - bias, lead = sub ? 0 : 1, frac = M / 2 ** mb, digits = Math.max(1, Math.min(mb, 10));
     const value = (s ? -1 : 1) * (lead + frac) * 2 ** power, mant = lead + frac;
     fillTable(tab, [
@@ -53,7 +53,8 @@ export default (fig) => {
       ['Exponent', boxes(E.toString(2).padStart(eb, '0'), 'e'), fmt(E), mel('span', null, sub ? `\\(0\\) is the special code for tiny numbers: no leading 1, and the power is fixed at \\(2^{${1 - bias}}\\)` : `\\(${E} - ${bias} = ${power}\\), so the power of two is \\(2^{${power}} = ${Number((2 ** power).toPrecision(6))}\\)`)],
       ['Mantissa', mb ? boxes(M.toString(2).padStart(mb, '0'), 'm') : 'no bits', fmt(M), mel('span', null, mb ? `\\(${fmt(M)} / 2^{${mb}} = ${frac.toFixed(digits)}\\), so the number before the power of two is \\(${lead} + ${frac.toFixed(digits)} = ${mant.toFixed(digits)}\\)` : `With no mantissa bits the number before the power of two is always \\(${lead}\\)`)],
     ]);
-    setDisplayMath(formula, `${s ? '-' : ''}${mant.toFixed(digits)} \\times 2^{${power}} = ${texNumber(value)}`);
+    $(fig, '[data-o=m]').textContent = fmt(M);
+    setDisplayMath(formula, `${s ? '\\htmlClass{sx-c-s}{-}' : ''}\\htmlClass{sx-c-m}{${mant.toFixed(digits)}} \\times 2^{\\htmlClass{sx-c-e}{${power}}} = ${texNumber(value)}`);
     note.textContent = `${1 + eb + mb} bits in all: 1 sign + ${eb} exponent + ${mb} mantissa.` + (typed !== null && value !== typed ? ` The decimal number ${typed} has no exact form with these bits, so the float holds the nearest one it can.` : '');
   };
   fig.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => set(+b.dataset.preset)));

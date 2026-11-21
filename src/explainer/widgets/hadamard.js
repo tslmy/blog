@@ -1,4 +1,4 @@
-import { $, el } from '../core/dom.js';
+import { $, el, focusable } from '../core/dom.js';
 import { choice } from '../core/controls.js';
 import { hadamard } from '../core/linalg.js';
 import { setMath } from '../core/math.js';
@@ -13,7 +13,7 @@ export default (fig) => {
     h.forEach((row, i) => row.forEach((v, j) => {
       const c = el('div', v > 0 ? 'p' : 'm', n <= 8 ? (v > 0 ? '+' : '−') : '');
       if (n > 2 && i >= n / 2 && j >= n / 2) c.classList.add('neg');   // the negated copy
-      c.dataset.row = i;
+      c.dataset.row = i; c.dataset.j = j;
       c.addEventListener('click', () => {
         grid.classList.add('picked');
         grid.querySelectorAll('div').forEach((d) => d.classList.toggle('sel', d.dataset.row === String(i)));
@@ -24,6 +24,7 @@ export default (fig) => {
       grid.append(c);
     }));
     box.replaceChildren(grid);
+    focusable(grid, '[data-j="0"]', (e) => `Row ${+e.dataset.row + 1}`);
     setMath(note, n === 2
       ? 'The 2×2 matrix: output 1 is the sum of the two inputs, output 2 their difference (each divided by \\(\\sqrt{2}\\)).'
       : `${n}×${n}: four copies of the ${n / 2}×${n / 2} matrix, the bottom-right one (outlined) with its signs flipped. Click a row.`);

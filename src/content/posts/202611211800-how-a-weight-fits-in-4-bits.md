@@ -78,7 +78,7 @@ Two things stand out:
 So weights cluster, and a fixed rule wastes levels on the places where they are not. The next intuitive step is to put the levels where the weights are, so that each level serves about the same number of weights. That is what Lloyd's algorithm does: send every weight to its nearest level, move each level to the average of the weights it got, and repeat. Try it on a lumpy cloud of values, and then on a bell curve:
 
 <figure class="widget wide" id="lloyd" data-widget="lloyd">
-  <figcaption><strong>Finding the levels with <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a>.</strong> The bars count 4,000 values. Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got.</figcaption>
+  <figcaption><strong>Finding the levels with <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a>.</strong> The bars count 4,000 values. Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got. The bars compare the error with a tiny float of the same number of bits, and the line shows the error after each step.</figcaption>
   <div class="sx-controls">
     <span class="sx-seg" role="group" aria-label="Which values"><button data-dist="lumpy" aria-pressed="true">lumpy cloud</button><button data-dist="bell" aria-pressed="false">bell curve</button></span>
     <label>Bits <input type="range" min="2" max="4" step="1" value="2" data-k="bits"> <output data-o="bits"></output></label>
@@ -87,6 +87,7 @@ So weights cluster, and a fixed rule wastes levels on the places where they are 
     <button data-act="reset">reset</button>
   </div>
   <svg class="sx-ll" viewBox="0 0 640 230" role="img" aria-label="A histogram of values with quantization levels that move toward where the values are, one step at a time"></svg>
+  <svg class="sx-sz" data-v="cmp" viewBox="0 0 640 130" role="img" aria-label="The error of a tiny float, of evenly spaced levels and of the fitted levels, and how the error falls with each step"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
 </figure>
 
@@ -213,11 +214,9 @@ To get a feel for what grouping buys, try it on a toy matrix of 12 rows and 64 c
     <button data-act="new">New matrix</button>
   </div>
   <svg class="sx-gr" data-v="w" role="img" aria-label="Heatmap of a toy weight matrix with group boundaries and each group's scale printed on its cells"></svg>
-  <p class="sx-gcap">Scale of each group, its largest weight (the more gold, the larger). An outline marks a group that contains an outlier.</p>
-  <svg class="sx-gr" data-v="s" role="img" aria-label="Heatmap of the scale of each group in each row"></svg>
   <p class="sx-note" data-v="info" aria-live="polite">&nbsp;</p>
-  <p class="sx-gcap">Rounding error after 4 bits, per weight (redder is larger)</p>
-  <svg class="sx-gr" data-v="e" role="img" aria-label="Heatmap of the rounding error of each weight"></svg>
+  <svg class="sx-gr" data-v="se" role="img" aria-label="Two heatmaps side by side: the scale of each group in each row, and the rounding error of each weight"></svg>
+  <p class="sx-gcap">An outline marks a group that contains an outlier.</p>
   <div class="sx-gstore">
     <div class="sx-gbar"><div class="idx"></div><div class="scl"></div></div>
     <p class="sx-note" data-v="store"></p>
@@ -245,7 +244,7 @@ Here are the groups from the figure above, split into those that contain an outl
 
 ### Groups of two weights, as points
 
-To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like one row of the toy matrix above and at the same cell size. The groups run from a short one, where one weight is much bigger than the other, to a long one, where the two weights are equal:
+To visualize axes, let's consider the smallest case: groups of just 2 weights. Below is a row of weights cut into groups of two, like one row of the toy matrix above, drawn larger. The groups run from a short one, where one weight is much bigger than the other, to a long one, where the two weights are equal:
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="strips">
   <figcaption><strong>Groups of two weights.</strong> Each group has a number and a color, so that you can follow it through the figures below.</figcaption>
@@ -265,7 +264,7 @@ Each group is just two numbers, *w*<sub>1</sub> and *w*<sub>2</sub>, so it can a
 
 <figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points">
   <figcaption><strong>Groups as points.</strong> Each marker is one group, placed at (<em>w</em><sub>1</sub>, <em>w</em><sub>2</sub>): triangles are the first half (closer to an axis), circles the second half (closer to a diagonal). Change the number of groups above and the markers move.</figcaption>
-  <svg class="sx-r2" viewBox="0 0 330 300" style="max-width:34rem" role="img" aria-label="Each group of two weights drawn as a point, with the first weight on the horizontal axis and the second on the vertical axis"></svg>
+  <svg class="sx-r2" viewBox="0 0 330 300" style="max-width:34rem;margin:0 auto" role="img" aria-label="Each group of two weights drawn as a point, with the first weight on the horizontal axis and the second on the vertical axis"></svg>
 </figure>
 
 ### Quantizing the points
@@ -277,10 +276,10 @@ Now let's see what quantization does to these points:
 - A point close to an axis has one big weight and one tiny one, so its square must be as large as the point is long, and the grid is coarse.
 - A point on the diagonal has two equal weights, which is as flat as it gets: the square is smaller and the grid finer.
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail" data-toggles="squares:Squares;grid:Grid points;start:Real weights (start);trail:Trails;end:Stored positions (end);bits:Binary labels">
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant bits loss trail" data-toggles="squares:Squares;grid:Grid points;start:Real weights (start);trail:Trails;end:Stored positions (end);bits:Binary labels:off">
   <figcaption><strong>Quantizing groups of two weights.</strong> Each group has its own scale, as in step 1, so each gets its own square in its own color, drawn to just reach its largest weight. Each grid point is a possible stored value, and the label next to each solid marker gives its group's stored value: the two level numbers in binary, 2 bits per weight. A trail of shadows leads back to the group's real weights. The selected group's levels are numbered along its square. Click a marker to select a group.</figcaption>
   <div class="sx-controls"><button data-act="replay">replay the movement</button></div>
-  <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem" role="img" aria-label="Groups as points with the square of quantization levels and the grid, each drawn where it is stored, with a trail of fading shadows back to its real weights"></svg>
+  <svg class="sx-r2" viewBox="0 -8 330 322" style="max-width:34rem;margin:0 auto" role="img" aria-label="Groups as points with the square of quantization levels and the grid, each drawn where it is stored, with a trail of fading shadows back to its real weights"></svg>
   <p class="sx-cap2">Here is how much each group loses to rounding, the length of its trail as a share of the group's length, split into the first half (closer to an axis) and the second half (closer to a diagonal):</p>
   <svg class="sx-ol" data-v="loss" viewBox="0 0 640 200" role="img" aria-label="Rounding error of each group, split into the first half of the groups, closer to an axis, and the second half, closer to a diagonal"></svg>
   <p class="sx-note" data-v="lossnote" aria-live="polite">&nbsp;</p>
@@ -294,7 +293,7 @@ Now rotate the groups and watch what happens to each half:
 - The loss diagram under the plot shows how much each group loses at the current angle.
 - The camera switch changes the viewpoint. Off, the camera stays with the axes and the points move. On, it stays with the points, and the axes and squares turn the other way.
 
-<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
+<figure class="widget wide" data-widget="rot2d" data-scene="main" data-layers="points quant ghost curve loss" data-toggles="squares:Squares;grid:Grid points:off;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows:off">
   <figcaption><strong>Rotating groups of two weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored.</figcaption>
   <div class="sx-rowlabel sx-block">Rotation</div>
   <div class="sx-controls">
@@ -518,7 +517,7 @@ Here are some groups of three weights, laid out like the two-weight ones. They r
 
 Three weights make a point in 3D space, one weight per axis. Each group gets a cube of levels, 4 per axis, that just reaches its largest weight. Here is the same setup as for two weights, with the groups rotated about the diagonal:
 
-<figure class="widget wide" data-widget="rot3dg" data-scene="three" data-layers="points quant ghost curve loss" data-toggles="cubes:Cubes;grid:Grid points;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows">
+<figure class="widget wide" data-widget="rot3dg" data-scene="three" data-layers="points quant ghost curve loss" data-toggles="cubes:Cubes;grid:Grid points:off;pre:Pre-rotation locations;start:Rotated locations (start);end:Stored locations (end);trail:Arrows:off">
   <figcaption><strong>Rotating groups of three weights.</strong> Dashed outlines mark where the groups started, filled markers are where the rotation has taken them, and solid outlines are where each group is stored. Drag the background to look around, click a marker to select a group, or switch on "spin the view" and move the slider while everything turns.</figcaption>
   <div class="sx-rowlabel sx-block">Rotation</div>
   <div class="sx-controls">

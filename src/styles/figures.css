@@ -33,6 +33,10 @@
 .sx-fb .sx-formula { text-align: center; font-size: 1.7em; margin: .6rem 0 .2rem; overflow-x: auto; }
 .sx-fb .sx-formula .katex-display { margin: 0; }
 .sx-fb .sx-bitrow { flex-wrap: nowrap; }
+.sx-fb .sx-bitrow .b.m { background: var(--sx-blue); color: #fff; }
+.sx-fb .sx-c-s { color: var(--sx-red); }
+.sx-fb .sx-c-e { color: var(--sx-gold); }
+.sx-fb .sx-c-m { color: var(--sx-blue); }
 .sx-fb .sx-stat :is(td, th).num { text-align: left; font-weight: normal; }
 .sx-fb .sx-stat thead th, .sx-fb .sx-stat tr:first-child th { font-weight: bold; }
 
@@ -57,7 +61,7 @@
 
 /* Heatmaps of the toy matrix (.sx-gr), the storage bar and the table of group sizes */
 .sx-gr .gl { stroke: #fff; stroke-width: .6; }
-.sx-gr .gv { fill: #fff; stroke: rgba(0, 0, 0, .6); stroke-width: 2px; paint-order: stroke; font: 7px var(--sx-sans); pointer-events: none; }
+.sx-gr .gv { fill: #fff; stroke: rgba(0, 0, 0, .6); stroke-width: 2.5px; paint-order: stroke; font: bold 9px var(--sx-sans); pointer-events: none; }
 .sx-gr .sel { fill: none; stroke: var(--text); stroke-width: 2; }
 .sx-gr .olc { fill: none; stroke: var(--sx-gold); stroke-width: 1.5; pointer-events: none; }
 .sx-gr .olg { fill: none; stroke: var(--text); stroke-width: 1.4; pointer-events: none; }
@@ -107,7 +111,7 @@
 
 /* Chopping float bits (.sx-mf): the weights' histogram, and a tick for every level the format has */
 .sx-mf .bar { fill: var(--sx-blue); opacity: .5; }
-.sx-mf .lv { stroke: var(--sx-gold); stroke-width: 1; }
+.sx-mf .lv { stroke: var(--sx-gold); stroke-width: 1; opacity: .6; }   /* translucent, so crowded ticks read as a darker band */
 
 /* Lloyd's algorithm (.sx-ll), the cost bars (.sx-sz, .sx-cost) and the operation counter */
 .sx-ll .bar { fill: var(--sx-blue); opacity: .5; }
@@ -120,3 +124,6 @@
 .sx-reuse th { text-align: right; padding: .15rem .8rem .15rem 0; font: .78rem var(--sx-sans); color: var(--muted); white-space: nowrap; }
 .sx-reuse td.num { padding: .2rem .5rem; min-width: 3rem; text-align: right; border-bottom: 0; }
 .sx-reuse tr.res td { text-align: left; padding: .3rem 0 .5rem; font: bold .85rem var(--sx-mono); }
+
+/* Marks that can be activated from the keyboard show where the focus is */
+:where(.explainer figure.widget) svg [role=button]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
