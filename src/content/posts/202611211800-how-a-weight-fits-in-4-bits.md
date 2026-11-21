@@ -104,13 +104,15 @@ description: Codebook quantization, step by step, with live figures.
   <figcaption><strong>Rotating four groups of three weights.</strong> Each dot is one group, a point on a sphere of length 1. The cube is the range its levels must cover, with 4 levels per axis (2 bits), and the gold line goes from the point to the level it rounds to. Rotating about the diagonal by 60° turns every axis-aligned spike into a flatter point; at 120° the points are spiky again.</figcaption>
   <div class="sx-controls">
     <label>Rotate <input type="range" min="0" max="120" step="1" value="0" data-k="deg"> <output data-o="deg"></output></label>
-    <button data-act="flat">60° (flattest)</button>
+    <button data-act="flat">60° (flattest 3×3)</button>
     <button data-act="reset">reset</button>
     <button data-act="follow" aria-pressed="false">camera follows the points</button>
     <button data-act="spin" aria-pressed="false">spin the view</button>
   </div>
   <svg class="sx-r3" viewBox="0 0 640 330" role="img" aria-label="Four points in three dimensions with the cube of quantization levels around the selected point"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+  <div class="sx-mat"></div>
+  <p class="sx-note">The slider is only an animation. Whistle applies one fixed matrix, all at once, to every group: there is no angle to choose. No 3×3 Hadamard matrix exists, but at 60° the rotation matrix has the flattest entries a 3×3 rotation can have, ±2/3 and ±1/3, which is the closest 3D stand-in.</p>
 </figure>
 
 <p>Why this is safe:</p>
@@ -203,6 +205,7 @@ description: Codebook quantization, step by step, with live figures.
   </div>
   <svg class="sx-r3" viewBox="0 0 640 330" role="img" aria-label="A cloud of points in three dimensions that rotates by PCA or by a flattening rotation, coloured by rounding error"></svg>
   <p class="sx-note sx-readout" aria-live="polite">&nbsp;</p>
+  <p class="sx-note">The slider is only an animation. A real PCA step applies one matrix, fitted to the data, all at once. The flattening rotation is the 60° one from the figure above, standing in for the Hadamard matrix.</p>
 </figure>
 
 <p>Neither rotation is better in general; they are tools for different jobs. When the data has no preferred direction (the first data set), PCA's axes are close to arbitrary, so a PCA rotation can help or hurt by chance. When the weights move together (the second), PCA is exactly the wrong tool for rounding: it makes every group spikier.</p>
