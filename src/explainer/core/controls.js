@@ -1,3 +1,5 @@
+import { nextSeed } from './random.js';
+
 // Reads and wires the range sliders of a figure. Every <input type=range data-k="name"> shows its value in the
 // matching <output data-o="name"> (through format[name] if given), and the returned object always holds the current
 // values, so a figure needs no copy of them: change them and `onChange(name)` runs.
@@ -10,4 +12,22 @@ export const ranges = (fig, onChange, format = {}) => {
     input.addEventListener('input', () => { sync(); onChange(key); });
   });
   return values;
+};
+
+// The on/off switches of a figure: every <button data-k="name" aria-pressed> toggles values[name], and `onChange(name)` runs.
+// The returned object starts from the page's aria-pressed values and always holds the current ones.
+export const switches = (fig, onChange) => {
+  const values = {};
+  fig.querySelectorAll('button[data-k][aria-pressed]').forEach((button) => {
+    const key = button.dataset.k;
+    values[key] = button.getAttribute('aria-pressed') === 'true';
+    button.addEventListener('click', () => { values[key] = !values[key]; button.setAttribute('aria-pressed', String(values[key])); onChange(key); });
+  });
+  return values;
+};
+
+// A figure's random example: the returned function gives the current seed, and the figure's "new" button moves to the next one.
+export const reseedable = (fig, seed, onNew) => {
+  fig.querySelector('[data-act=new]')?.addEventListener('click', () => { seed = nextSeed(seed); onNew(); });
+  return () => seed;
 };

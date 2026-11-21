@@ -1,10 +1,11 @@
 import { $, sv } from '../core/dom.js';
-import { gauss, nextSeed, rng } from '../core/random.js';
+import { gauss, rng } from '../core/random.js';
 import { fwht } from '../core/linalg.js';
+import { reseedable } from '../core/controls.js';
 
 // 7. Rotation spreads outliers: bars and histograms before and after
 export default (fig) => {
-  const state = { n: 64, k: 1, s: 20, zoom: false }; let seed = 7;
+  const state = { n: 64, k: 1, s: 20, zoom: false }, seed = reseedable(fig, 7, () => draw());
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const stats = (x) => {                                   // crest factor and the error of plain 16 evenly spaced levels
     const m = Math.max(...x.map(Math.abs)), e = x.reduce((a, v) => a + v * v, 0), step = 2 * m / 15;
@@ -24,7 +25,7 @@ export default (fig) => {
     return kids;
   };
   const draw = () => {
-    const r = rng(seed), g = () => gauss(r);
+    const r = rng(seed()), g = () => gauss(r);
     const x = Array.from({ length: state.n }, g), k = Math.min(state.k, state.n);
     for (let j = 0; j < k; j++) x[Math.floor(r() * state.n)] = (r() < .5 ? -1 : 1) * state.s;
     const y = fwht(x), mx = Math.max(...x.map(Math.abs)), my = Math.max(...y.map(Math.abs)), R = Math.max(mx, my);
@@ -40,10 +41,6 @@ export default (fig) => {
     state[i.dataset.k] = i.dataset.k === 'n' ? 2 ** +i.value : +i.value;
     $(fig, `[data-o=${i.dataset.k}]`).textContent = state[i.dataset.k]; draw();
   }));
-  fig.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.act === 'new') seed = nextSeed(seed);
-    else { state.zoom = !state.zoom; b.setAttribute('aria-pressed', String(state.zoom)); }
-    draw();
-  }));
+  fig.querySelectorAll('button[data-k=zoom]').forEach((b) => b.addEventListener('click', () => { state.zoom = !state.zoom; b.setAttribute('aria-pressed', String(state.zoom)); draw(); }));
   draw();
 };

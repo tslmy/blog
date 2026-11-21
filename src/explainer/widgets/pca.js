@@ -1,13 +1,14 @@
 import { $, sv } from '../core/dom.js';
 import { fwht, jacobi } from '../core/linalg.js';
-import { gauss, nextSeed, rng } from '../core/random.js';
+import { gauss, rng } from '../core/random.js';
+import { reseedable } from '../core/controls.js';
 
 // 6b. PCA versus the Hadamard rotation on the same groups of 8 weights
 export default (fig) => {
-  const M = 24, D = 8, CLIP = 4, state = { ds: 'spiky' }; let seed = 3;
+  const M = 24, D = 8, CLIP = 4, state = { ds: 'spiky' }, seed = reseedable(fig, 3, () => draw());
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const data = () => {
-    const r = rng(seed), g = () => gauss(r);
+    const r = rng(seed()), g = () => gauss(r);
     if (state.ds === 'spiky') return Array.from({ length: M }, () => { const row = Array.from({ length: D }, () => .35 * g()); row[Math.floor(r() * D)] += (r() < .5 ? -1 : 1) * (3.5 + .6 * g()); return row; });
     const u = Array.from({ length: D }, g), l = Math.hypot(...u), uu = u.map((x) => x / l);
     return Array.from({ length: M }, () => { const a = g(); return uu.map((x) => 3.2 * a * x + .45 * g()); });
@@ -40,6 +41,5 @@ export default (fig) => {
       : `The weights share one direction. PCA finds it and moves nearly all the energy into the first coordinate (${(Math.max(...res[1].cols) * 100).toFixed(0)}%), which is ideal for dropping the other seven, but each group becomes one big weight plus noise: the error rises from ${(res[0].err * 100).toFixed(0)}% to ${(res[1].err * 100).toFixed(0)}%. A flattening rotation does not need to know the direction and spreads everything out.`;
   };
   fig.querySelectorAll('[data-ds]').forEach((b) => b.addEventListener('click', () => { state.ds = b.dataset.ds; fig.querySelectorAll('[data-ds]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); draw(); }));
-  $(fig, '[data-act=new]').addEventListener('click', () => { seed = nextSeed(seed); draw(); });
   draw();
 };

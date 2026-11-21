@@ -1,6 +1,7 @@
 import { $, sv } from '../core/dom.js';
-import { gauss, nextSeed, rng } from '../core/random.js';
+import { gauss, rng } from '../core/random.js';
 import { fwht } from '../core/linalg.js';
+import { reseedable, switches } from '../core/controls.js';
 
 // 7. Quantizing one group: evenly spaced levels vs rotation + Gaussian codebook
 export default (fig) => {
@@ -9,7 +10,6 @@ export default (fig) => {
     2: [-1.507, -0.451, 0.453, 1.51],
     4: [-2.71, -2.044, -1.595, -1.233, -0.922, -0.64, -0.373, -0.114, 0.144, 0.404, 0.673, 0.961, 1.276, 1.637, 2.084, 2.741],
   };
-  const state = { rotate: true, codebook: true, heavy: true, bits4: false };
   // heavy tails: Student's t with 3 degrees of freedom, a common model for weights with outliers
   const sample = (r) => state.heavy ? gauss(r) / Math.sqrt((gauss(r) ** 2 + gauss(r) ** 2 + gauss(r) ** 2) / 3) : gauss(r);
   const group = (r) => Array.from({ length: G }, () => sample(r) * SIGMA);
@@ -30,10 +30,10 @@ export default (fig) => {
     const err = norm(w.map((x, i) => x - back[i])) / norm(w);
     return { shown, levels, err, n };
   };
-  let seed = 11;
+  const state = switches(fig, () => draw()), seed = reseedable(fig, 11, () => draw());
   const svg = $(fig, 'svg'), note = $(fig, '.sx-note');
   const draw = () => {
-    const w = group(rng(seed)), { shown, levels, err, n } = quant(w);
+    const w = group(rng(seed())), { shown, levels, err, n } = quant(w);
     const r = rng(4242); let avg = 0; for (let i = 0; i < 500; i++) avg += quant(group(r)).err / 500;
     const big = w.reduce((b, x, i) => (Math.abs(x) > Math.abs(w[b]) ? i : b), 0);
     const R = Math.max(1.6, ...shown.map(Math.abs), ...levels.map(Math.abs)) * 1.08, X = (x) => 20 + ((x + R) / (2 * R)) * 600;
@@ -52,10 +52,5 @@ export default (fig) => {
       + (!state.rotate && !state.codebook ? ' The largest weight (red) sets the spacing, so the ordinary weights share very few levels.' : '')
       + (state.rotate && state.codebook ? ' This is the combination the iPod runs.' : '');
   };
-  fig.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
-    if (b.dataset.act === 'new') seed = nextSeed(seed);
-    else { state[b.dataset.k] = !state[b.dataset.k]; b.setAttribute('aria-pressed', String(state[b.dataset.k])); }
-    draw();
-  }));
   draw();
 };
