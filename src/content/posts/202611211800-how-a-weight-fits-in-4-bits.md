@@ -307,9 +307,21 @@ A reasonable rule of thumb is to say a group of 64 has an outlier if its crest f
 
 Many rotations would flatten a spike, as the figures above show. Whistle uses one that needs no multiplications and no stored matrix, because a simple rule generates it: the [Walsh–Hadamard matrix](https://en.wikipedia.org/wiki/Hadamard_matrix).[^note-3] Our groups so far have had two weights, but Whistle's have 64 or 128, so we need one for bigger groups too.
 
-[^note-3]: Rotating before quantizing is a published technique. [QuIP#](https://arxiv.org/abs/2402.04396) (Tseng et al., 2024) uses a randomized Hadamard transform on the weights, with random signs that this project does not add. [QuaRot](https://arxiv.org/abs/2404.00456) (Ashkboos et al., 2024) rotates a whole LLM with Hadamard matrices to remove outliers for 4-bit inference.
+[^note-3]: Rotating before quantizing is a published technique. [QuIP#](https://arxiv.org/abs/2402.04396) (Tseng et al., 2024) uses a randomized Hadamard transform on the weights, with random signs that my version does not add. [QuaRot](https://arxiv.org/abs/2404.00456) (Ashkboos et al., 2024) rotates a whole LLM with Hadamard matrices to remove outliers for 4-bit inference.
 
-It is a square matrix whose entries are all +1 or −1, divided by $\sqrt{n}$ so that it keeps lengths. The 2×2 one is \\[ H\_2 = \\frac{1}{\\sqrt{2}}\\begin{bmatrix} 1 & 1 \\\\ 1 & -1 \\end{bmatrix} \\] and each bigger one is four copies of the previous one, with the bottom-right copy negated: \\[ H\_{2n} = \\frac{1}{\\sqrt{2}}\\begin{bmatrix} H\_n & H\_n \\\\ H\_n & -H\_n \\end{bmatrix} \\] That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up to 64 and 128. Here are the entries, before the scaling:
+It is a square matrix whose entries are all +1 or −1, divided by $\sqrt{n}$ so that it keeps lengths. The 2×2 one is
+
+$$
+H_2 = \frac{1}{\sqrt{2}}\begin{bmatrix} 1 & 1 \\ 1 & -1 \end{bmatrix}
+$$
+
+and each bigger one is four copies of the previous one, with the bottom-right copy negated:
+
+$$
+H_{2n} = \frac{1}{\sqrt{2}}\begin{bmatrix} H_n & H_n \\ H_n & -H_n \end{bmatrix}
+$$
+
+That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up to 64 and 128. Here are the entries, before the scaling:
 
 <figure class="widget wide" data-widget="hadamard">
   <figcaption><strong>Building a Walsh–Hadamard matrix by doubling.</strong> Blue is +1, red is −1. Pick a size, then click a row to see what it computes.</figcaption>
@@ -478,7 +490,7 @@ So the rotation is settled: one Hadamard matrix, applied to every group. Next co
 
 Before the codebook, a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.
 
-Take a group of 64 weights, which is the group size this project uses for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits *this* group best, which is not evenly spaced.
+Take a group of 64 weights, which is the group size I used for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits *this* group best, which is not evenly spaced.
 
 To see such a set, pick two of the 64 weights at random, say the 21st and the 58th, and plot them as one point. The levels of the group, applied to both axes, make a grid around it. Then take the weights at the same two positions in another group: a different point, and a different set of levels, because the other group has its own weights. Add groups and levels below and watch the table:
 
@@ -591,7 +603,7 @@ Putting it together, the step does this:
 - The levels come from [Lloyd's algorithm](https://en.wikipedia.org/wiki/Lloyd%27s_algorithm) run on a Gaussian: dense near zero, where most values are, and sparse in the tails. That set is the codebook.[^note-7]
 - Each weight stores the 4-bit index of its nearest level.
 
-[^note-7]: Levels built for normally distributed weights are not unique to this project. The NF4 data type in [QLoRA](https://arxiv.org/abs/2305.14314) (Dettmers et al., 2023) is designed for zero-centred normal data too, but places its levels at quantiles of the normal distribution, so that each level serves the same expected number of values, rather than with Lloyd's algorithm.
+[^note-7]: Levels built for normally distributed weights are not unique to Whistle's scheme. The NF4 data type in [QLoRA](https://arxiv.org/abs/2305.14314) (Dettmers et al., 2023) is designed for zero-centred normal data too, but places its levels at quantiles of the normal distribution, so that each level serves the same expected number of values, rather than with Lloyd's algorithm.
 
 To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced. The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16:
 
@@ -735,7 +747,7 @@ One more refinement is for SmolLM2 only. It changes only which level each weight
 
 - Rounding each weight to its nearest level is the simplest choice, but not the best one: the errors of neighbouring weights can add up or cancel out.
 - [GPTQ](https://arxiv.org/abs/2210.17323) rounds the weights one at a time and nudges the not-yet-rounded ones to compensate, using statistics of real activations (here, from 40 chat questions).
-- It ran on the Mac in a minute, in the rotated domain, with one GPTQ block per group.
+- It ran on my Mac in a minute, in the rotated domain, with one GPTQ block per group.
 
 [Perplexity](https://en.wikipedia.org/wiki/Perplexity) on held-out chats, where lower is better:
 

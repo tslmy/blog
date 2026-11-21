@@ -47,7 +47,7 @@ export default (fig) => {
     note.textContent = `${state.rotate ? 'Rotated' : 'Raw'} weights, ${state.codebook ? 'Gaussian codebook' : 'evenly spaced levels'}, ${state.bits4 ? 4 : 2} bits: these ${G} values use ${used} of ${n} levels. `
       + `Error after decoding: ${(err * 100).toFixed(0)}% of the group's size here, ${(avg * 100).toFixed(0)}% on average over 500 random groups.`
       + (!state.rotate && !state.codebook ? ' The largest weight (red) sets the spacing, so the ordinary weights share very few levels.' : '')
-      + (state.rotate && state.codebook ? ' This is the combination the iPod runs.' : '');
+      + (state.rotate && state.codebook ? ' This is the combination Whistle ships.' : '');
   };
   draw();
 };
