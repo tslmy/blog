@@ -100,7 +100,7 @@
     const seek = (clientY: number) => {
       const r = map.getBoundingClientRect();
       const frac = Math.min(Math.max((clientY - r.top) / r.height, 0), 1);
-      scrollTo({ top: top + frac * total - innerHeight / 2 });
+      scrollTo({ top: top + frac * total - innerHeight / 2, behavior: 'instant' }); // not the page's smooth scrolling: the viewport follows the pointer
     };
     let dragging = false;
     map.addEventListener('pointerdown', (e) => { dragging = true; map.setPointerCapture(e.pointerId); seek(e.clientY); });
