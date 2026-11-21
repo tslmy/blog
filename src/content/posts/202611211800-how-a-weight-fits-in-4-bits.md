@@ -488,9 +488,11 @@ So the rotation is settled: one Hadamard matrix, applied to every group. Next co
 
 ### Per-group codebooks are expensive to store
 
-Before the codebook, a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.
+Before the codebook[^scalar], a tempting thought needs breaking: that levels are cheap to store. That holds only for evenly spaced levels, where the scale alone fixes all of them. Evenly spaced levels fit the weights badly, so let us see what better ones cost.
 
 Take a group of 64 weights, which is the group size I used for SmolLM2 (Whistle uses 128). The 64 weights hardly spread evenly: most sit near zero and a few lie far out. Evenly spaced levels would be wasted on the sparse outer region, so we want the set of levels that fits *this* group best, which is not evenly spaced.
+
+[^scalar]: Here a codebook is a list of levels: 16 numbers, and each weight rounds to one of them independently of the others. That is scalar quantization, and so is every step of this article. The rotation in step 2 only changes the coordinates the rounding happens in. Vector quantizers instead replace a whole group with one entry from a codebook of points; [QuIP#](https://arxiv.org/abs/2402.04396) is an example.
 
 To see such a set, pick two of the 64 weights at random, say the 21st and the 58th, and plot them as one point. The levels of the group, applied to both axes, make a grid around it. Then take the weights at the same two positions in another group: a different point, and a different set of levels, because the other group has its own weights. Add groups and levels below and watch the table:
 
