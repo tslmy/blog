@@ -516,7 +516,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 <p>So sharing is what makes small groups affordable: each group may only pay for a single scale.</p>
 </details>
 
-<p>Start with the shape of the values. Trained weights are usually roughly bell-shaped, as one would expect: they start out as random Gaussian numbers, and training adds up many small nudges. Here are the real weights of SmolLM2. Each group is first divided by its length, so that every group is measured on the same scale:</p>
+<p>Start with the shape of the values. Trained weights are usually roughly bell-shaped, as one would expect: they start out as random Gaussian numbers, and training adds up many small nudges. Here are the real weights of SmolLM2. Each group is first divided by its length, so that every group is measured on the same scale. Under the plot, the readout gives the <a href="https://en.wikipedia.org/wiki/Kurtosis">kurtosis</a> of the values, which is 3 for a bell curve:<span class="sidenote-wrap"><label for="sn-5" class="sidenote-number"></label><input type="checkbox" id="sn-5" class="sidenote-toggle"><span class="sidenote">Kurtosis measures how heavy the tails are. It is the average of \(x^4\) when the values \(x\) are measured in standard deviations: a bell curve scores 3, a sharper peak with long tails scores more, and values packed into a narrow range score less.</span></span></p>
 
 <figure class="widget wide" data-widget="hist" data-mode="single">
   <figcaption><strong>SmolLM2's weights as a histogram.</strong> Each bar counts the weights in a narrow range of values, measured in standard deviations (σ) after dividing each group by its length. The dashed curve is an ideal bell curve.</figcaption>
