@@ -469,8 +469,7 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 <ul>
 <li><strong>Evenly spaced levels suit this badly.</strong> They are wasted on the tails, where almost nothing lands, and leave the crowded middle coarsely rounded.</li>
 <li><strong>Because the shape is known in advance, the levels can be designed once, ahead of time.</strong> They need only be dense where the bell is tall and sparse where it is short.</li>
-<li><strong>That only works if every group looks the same,</strong> so each group is divided by its own length first. Then the groups differ only in the scale we store, and one shared set of levels (the codebook) serves them all, with nothing extra to store per group.</li>
-<li><strong>A small shared codebook is fast.</strong> With 4 bits it has 16 entries, which fit in one CPU register and can be looked up for many weights at once (this is step 4).</li>
+<li><strong>That only works if every group looks the same,</strong> so each group is divided by its own length first. Then the groups differ only in the scale we store, and one shared set of levels (the codebook) serves them all, with nothing extra to store per group.<span class="sidenote-wrap"><label for="sn-3" class="sidenote-number"></label><input type="checkbox" id="sn-3" class="sidenote-toggle"><span class="sidenote">A side benefit is speed. A 4-bit codebook has only 16 entries, which fit in one CPU register, so many weights can be looked up at once (step 4). Speed is not why the codebook exists: the aim of these steps is a smaller model.</span></span></li>
 </ul>
 
 <p>So the step has these parts:</p>
