@@ -574,10 +574,9 @@ That gives a matrix for every size that doubles from 2: 4, 8, 16, and so on up t
 <li>Divide each group by its length, which is stored as the group's scale. What is left is a direction, so every group is on the same footing.</li>
 <li>The levels come from <a href="https://en.wikipedia.org/wiki/Lloyd%27s_algorithm">Lloyd's algorithm</a> run on a Gaussian: dense near zero, where most values are, and sparse in the tails. That set is the codebook.</li>
 <li>Each weight stores the 4-bit index of its nearest level.</li>
-<li>With 2 bits there are only 4 levels. Whistle mixes 2- and 4-bit layers.</li>
 </ul>
 
-<p>To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced:</p>
+<p>To see how the levels are found, step through Lloyd's algorithm. The bars are a pile of rotated values, a bell curve, and the levels start out evenly spaced. The bits slider sets how many levels there are: 2 bits give 4 levels, 3 give 8, 4 give 16:</p>
 
 <figure class="widget wide" data-widget="lloyd">
   <figcaption><strong>Finding the levels with Lloyd's algorithm.</strong> Gold ticks are the levels, and the dashed lines between them cut the number line into the zone each level serves. Each step sends every value to its nearest level, then moves each level to the average of the values it got.</figcaption>
