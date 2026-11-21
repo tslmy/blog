@@ -34,7 +34,7 @@ export default (fig) => {
     const r = rng(4242); let avg = 0; for (let i = 0; i < 500; i++) avg += quant(group(r)).err / 500;
     const big = w.reduce((b, x, i) => (Math.abs(x) > Math.abs(w[b]) ? i : b), 0);
     const R = Math.max(1.6, ...shown.map(Math.abs), ...levels.map(Math.abs)) * 1.08, X = (x) => 20 + ((x + R) / (2 * R)) * 600;
-    const kids = [sv('line', { x1: 20, x2: 620, y1: 112, y2: 112, class: 'axis' })];
+    const kids = [sv('line', { x1: 20, x2: 620, y1: 112, y2: 112, class: 'ax' })];
     levels.forEach((l) => kids.push(sv('line', { x1: X(l), x2: X(l), y1: 104, y2: 120, class: 'level' })));
     shown.forEach((x, i) => {
       const y = 18 + (i % 6) * 13;

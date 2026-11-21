@@ -16,7 +16,7 @@ export default (fig) => {
     const m = Math.max(...w.map(Math.abs)), n = 2 ** ctl.bits, step = 2 * m / (n - 1);
     const idxOf = (x) => Math.round((x + m) / step), levels = Array.from({ length: n }, (_, k) => -m + k * step), nearest = (x) => -m + idxOf(x) * step;
     const X = (x) => 20 + ((x + RANGE) / (2 * RANGE)) * 600, big = w.findIndex((x) => Math.abs(x) === m);
-    const kids = [sv('line', { x1: 20, x2: 620, y1: 128, y2: 128, class: 'axis' })];
+    const kids = [sv('line', { x1: 20, x2: 620, y1: 128, y2: 128, class: 'ax' })];
     levels.forEach((l) => kids.push(sv('line', { x1: X(l), x2: X(l), y1: 120, y2: 136, class: 'level' })));
     w.forEach((x, i) => {
       const y = 34 + (i % 6) * 13;
@@ -34,10 +34,10 @@ export default (fig) => {
       if (showBin || k === selK) kids.push(svgText(X(l), 162 + (showBin && (k / stride) % 2 ? 11 : 0), k.toString(2).padStart(ctl.bits, '0'), 'middle', 'bn' + cls));
     });
     // value ruler above the dots: the actual weights
-    kids.push(sv('line', { x1: 20, x2: 620, y1: 18, y2: 18, class: 'axis' }));
+    kids.push(sv('line', { x1: 20, x2: 620, y1: 18, y2: 18, class: 'ax' }));
     for (let t = -10; t <= 10; t++) {
       const v = t * 0.05, major = t % 5 === 0;
-      kids.push(sv('line', { x1: X(v), x2: X(v), y1: 18, y2: major ? 25 : 22, class: 'axis' }));
+      kids.push(sv('line', { x1: X(v), x2: X(v), y1: 18, y2: major ? 25 : 22, class: 'ax' }));
       if (major) kids.push(svgText(X(v), 11, String(Number(v.toFixed(2))), 'middle', 'lbl'));
     }
     svg.replaceChildren(...kids);

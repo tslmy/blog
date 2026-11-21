@@ -1,0 +1,111 @@
+/*
+ * What the figures draw: their <svg>s and the small tables and bars around them. Scoped to .explainer (see explainer.css
+ * for the colour tokens). Every figure's <svg> fills its column and shares the label, axis and mark styles below; the rest is
+ * specific to one figure, named by the class on its <svg> or wrapper.
+ */
+
+/* Shared by every figure svg. :where() keeps these at the lowest specificity, so a figure's own rule always wins. */
+:where(.explainer figure.widget) svg { width: 100%; height: auto; display: block; }
+:where(.explainer figure.widget) svg .lbl { fill: var(--muted); font: 11px var(--sx-sans); }
+:where(.explainer figure.widget) svg :is(.ax, .cur) { stroke: var(--muted); stroke-width: 1; }
+:where(.explainer figure.widget) svg :is(.rowname, .meant) { fill: var(--text); font-weight: bold; }
+:where(.explainer figure.widget) svg .val { fill: var(--text); }
+:where(.explainer figure.widget) svg .mean { stroke: var(--text); stroke-width: 2; }
+:where(.explainer figure.widget) svg .gnum { font-weight: bold; font-size: 10px; pointer-events: none; }
+
+/* Plain quantization and "quantizing one group" (.sx-cq) */
+.sx-cq .level { stroke: var(--text); stroke-width: 2; }
+.sx-cq .snap { stroke: var(--sx-gold); stroke-width: 1; opacity: .7; }
+.sx-cq .dot { fill: var(--sx-blue); cursor: pointer; }
+.sx-cq .dot.out { fill: var(--sx-red); }
+.sx-cq .dot.sel { stroke: var(--text); stroke-width: 2; }
+.sx-cq .lv { fill: var(--text); font: 10px var(--sx-mono); }
+.sx-cq .bn { fill: var(--muted); font: 10px var(--sx-mono); }
+.sx-cq .selk { fill: var(--accent); font-weight: bold; }
+.sx-bits p { margin: .7rem 0 .3rem; font-size: .85rem; color: var(--muted); }
+.sx-bitrow { display: flex; flex-wrap: wrap; gap: 2px; }
+.sx-bitrow .b { width: 1rem; height: 1.4rem; font: .78rem/1.4rem var(--sx-mono); text-align: center; border-radius: 2px; background: color-mix(in srgb, var(--muted) 18%, transparent); }
+.sx-bitrow .b.s { background: var(--sx-red); color: #fff; }
+.sx-bitrow .b.e { background: var(--sx-gold); color: #000; }
+.sx-bitrow .b.i { background: var(--sx-blue); color: #fff; width: 1.4rem; }
+
+/* The Walsh–Hadamard matrix by doubling (.sx-had) and the fast transform (.sx-fwht) */
+.sx-had .grid { display: grid; gap: 2px; max-width: 26rem; margin: .3rem auto; }
+.sx-had .grid div { aspect-ratio: 1; border-radius: 2px; font: .75rem/1 var(--sx-mono); color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: opacity .2s; }
+.sx-had .grid .p { background: var(--sx-blue); }
+.sx-had .grid .m { background: var(--sx-red); }
+.sx-had .grid .neg { outline: 1px solid var(--text); outline-offset: -1px; }
+.sx-had .grid.picked div:not(.sel) { opacity: .3; }
+.sx-fwht table { margin: .2rem auto; font: .85rem var(--sx-mono); }
+.sx-fwht th { font: .72rem var(--sx-sans); color: var(--muted); text-align: right; padding: .2rem .7rem; }
+.sx-fwht td { padding: .15rem .7rem; text-align: right; min-width: 2.5rem; }
+.sx-fwht td.a { color: var(--sx-blue); font-weight: bold; }
+.sx-fwht td.b { color: var(--sx-gold); font-weight: bold; }
+
+/* Rotation spreads outliers (.sx-sp) and PCA against a flattening rotation (.sx-pc) */
+.sx-sp .before { fill: var(--sx-red); }
+.sx-sp .after { fill: var(--sx-blue); }
+.sx-pc .lbl { font-size: 12px; }
+.sx-pc .pcb { fill: var(--sx-blue); }
+
+/* Heatmaps of the toy matrix (.sx-gr), the storage bar and the table of group sizes */
+.sx-gr .gl { stroke: #fff; stroke-width: .6; }
+.sx-gr .gv { fill: #fff; stroke: rgba(0, 0, 0, .6); stroke-width: 2px; paint-order: stroke; font: 7px var(--sx-sans); pointer-events: none; }
+.sx-gr .sel { fill: none; stroke: var(--text); stroke-width: 2; }
+.sx-gr .olc { fill: none; stroke: var(--sx-gold); stroke-width: 1.5; pointer-events: none; }
+.sx-gr .olg { fill: none; stroke: var(--text); stroke-width: 1.4; pointer-events: none; }
+.sx-gcap { margin: .8rem 0 .3rem; color: var(--muted); font-size: .85rem; }
+.sx-gbar { display: flex; height: .8rem; margin-top: .9rem; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--muted) 15%, transparent); }
+.sx-gbar .idx { background: var(--sx-blue); }
+.sx-gbar .scl { background: var(--sx-gold); }
+.sx-gtab { font: .85rem var(--sx-sans); width: 100%; max-width: 30rem; }
+.sx-gtab tr[data-i] { cursor: pointer; }
+.sx-gtab tr.on { background: color-mix(in srgb, var(--accent) 14%, transparent); font-weight: bold; }
+.sx-trip { margin: .5rem 0 .9rem; }
+.sx-tcol { margin-bottom: .5rem; }
+.sx-tcol .sx-hint { margin: .25rem 0 0; }
+.sx-trip .gnum2 { fill: var(--bg); font: bold 8px var(--sx-sans); }
+
+/* Rotating groups of weights as points: in 2D (.sx-r2) and 3D (.sx-r3 for the PCA cloud, .sx-r3g for groups of three) */
+.sx-r3 { touch-action: none; cursor: grab; }
+:is(.sx-r2, .sx-r3) .sph { fill: none; stroke: var(--sx-rule); stroke-dasharray: 3 4; }
+:is(.sx-r2, .sx-r3) .gd { fill: var(--muted); opacity: .55; }
+:is(.sx-r2, .sx-r3) .pt { fill: var(--sx-blue); cursor: pointer; }
+:is(.sx-r2, .sx-r3) .pt.sel { stroke: var(--text); stroke-width: 2; }
+:is(.sx-r2, .sx-r3) .snap3 { stroke: var(--sx-red); stroke-width: 2; }
+.sx-r3 .cube { stroke: var(--sx-gold); stroke-width: 1.2; opacity: .8; }
+.sx-r3 .pax { stroke: var(--sx-gold); stroke-width: 1.5; stroke-dasharray: 5 4; }
+:is(.sx-r2, .sx-r3g) .hadl { stroke: var(--sx-gold); stroke-width: 1.5; stroke-dasharray: 4 3; }
+:is(.sx-r2, .sx-r3g) .crv { fill: none; stroke-width: 2; }
+.sx-r2 .crv { stroke: var(--sx-blue); }
+:is(.sx-r2, .sx-r3g) .axl { font-style: italic; fill: var(--text); }
+:is(.sx-r2, .sx-r3g) .arrh, .sx-r3g .cdot { stroke: none; }
+:is(.sx-r2, .sx-r3g) .dest { fill: none; pointer-events: none; }
+:is(.sx-r2, .sx-r3g) .ghost { fill: none; stroke-dasharray: 2.5 2.5; pointer-events: none; }
+.sx-r2 .ghost { stroke: var(--muted); stroke-width: 1; opacity: .7; }
+.sx-r2 .sq { fill: none; stroke: var(--sx-gold); stroke-width: 1.4; }
+.sx-r3g .cube3 { fill: none; }
+.sx-r2 .cdot { fill: var(--sx-red); }
+.sx-r2 .hadt { fill: var(--sx-gold); font-weight: bold; }
+.sx-r2 :is(.bitl, .bitk) { font: bold 10px var(--sx-mono); paint-order: stroke; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.sx-r2 .arc { fill: none; stroke-linecap: round; }
+.sx-mat { display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap; margin-top: .6rem; }
+.sx-mat table { margin: 0; font: .85rem var(--sx-mono); }
+.sx-mat td { padding: .25rem .6rem; border: 1px solid var(--sx-rule); }
+.sx-mat .sx-note { margin: 0; min-height: 0; }
+
+/* Groups with an outlier lose more (.sx-ol) */
+.sx-ol .odot { opacity: .65; }
+.sx-ol .lossdot { opacity: .95; }
+
+/* Lloyd's algorithm (.sx-ll), the cost bars (.sx-sz, .sx-cost) and the operation counter */
+.sx-ll .bar { fill: var(--sx-blue); opacity: .5; }
+.sx-ll .lv { stroke: var(--sx-gold); stroke-width: 3; }
+.sx-ll .cut { stroke: var(--muted); stroke-dasharray: 3 3; opacity: .6; }
+.sx-ll .lvt { fill: var(--sx-gold); font-weight: bold; }
+.sx-sz .ramline { stroke: var(--sx-red); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.sx-sz .meant { fill: var(--sx-red); }
+.sx-reuse table { border-collapse: collapse; margin: .6rem 0 .8rem; font: .85rem var(--sx-mono); }
+.sx-reuse th { text-align: right; padding: .15rem .8rem .15rem 0; font: .78rem var(--sx-sans); color: var(--muted); white-space: nowrap; }
+.sx-reuse td.num { padding: .2rem .5rem; min-width: 3rem; text-align: right; border-bottom: 0; }
+.sx-reuse tr.res td { text-align: left; padding: .3rem 0 .5rem; font: bold .85rem var(--sx-mono); }

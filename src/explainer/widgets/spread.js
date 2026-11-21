@@ -13,13 +13,13 @@ export default (fig) => {
     return { crest: m / Math.sqrt(e / x.length), err: Math.sqrt(err / e) };
   };
   const bars = (x, R, y0, cls) => {
-    const kids = [sv('line', { x1: 20, x2: 620, y1: y0 + 35, y2: y0 + 35, class: 'axis' })], bw = 600 / x.length;
+    const kids = [sv('line', { x1: 20, x2: 620, y1: y0 + 35, y2: y0 + 35, class: 'ax' })], bw = 600 / x.length;
     x.forEach((v, i) => { const h = Math.abs(v) / R * 33; kids.push(sv('rect', { x: 20 + i * bw + (bw > 3 ? .5 : 0), y: v >= 0 ? y0 + 35 - h : y0 + 35, width: Math.max(bw - (bw > 3 ? 1 : 0), .6), height: Math.max(h, .5), class: cls })); });
     return kids;
   };
   const hist = (x, R, y0, cls) => {
     const B = 41, c = new Array(B).fill(0), base = y0 + 40; x.forEach((v) => { c[Math.max(0, Math.min(B - 1, Math.floor((v + R) / (2 * R) * B)))]++; });
-    const top = Math.max(1, ...c), bw = 600 / B, kids = [sv('line', { x1: 20, x2: 620, y1: base, y2: base, class: 'axis' })];
+    const top = Math.max(1, ...c), bw = 600 / B, kids = [sv('line', { x1: 20, x2: 620, y1: base, y2: base, class: 'ax' })];
     c.forEach((v, i) => { if (v) kids.push(sv('rect', { x: 20 + i * bw + 1, y: base - v / top * 36, width: bw - 2, height: v / top * 36, class: cls })); });
     [[20, 'start', -R], [320, 'middle', 0], [620, 'end', R]].forEach(([x0, anchor, val]) => { const t = sv('text', { x: x0, y: base + 13, 'text-anchor': anchor, class: 'lbl' }); t.textContent = (val > 0 ? '+' : '') + (Math.abs(val) < 10 ? val.toFixed(1) : Math.round(val)); kids.push(t); });
     return kids;
